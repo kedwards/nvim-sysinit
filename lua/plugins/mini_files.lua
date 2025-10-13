@@ -1,5 +1,14 @@
 return {
 	"echasnovski/mini.files",
+	init = function()
+		-- Register which-key group early so it's available when which-key loads
+		require("config.which_key_groups").register("mini_files", {
+			{
+				mode = { "n", "v" },
+				{ "<leader>f", group = "File" },
+			},
+		})
+	end,
 	opts = {
 		windows = {
 			preview = false,

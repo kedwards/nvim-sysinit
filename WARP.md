@@ -250,5 +250,26 @@ Supports complex linter setups like selene with custom config files via `lint_co
 ### Window Navigation Integration
 Includes zellij-nav plugin for seamless terminal multiplexer integration.
 
+### Dynamic Which-Key Group Registration
+Plugins can dynamically register their which-key groups using the `config.which_key_groups` registry:
+
+```lua
+return {
+  "plugin/name",
+  init = function()
+    -- Register which-key group early (before which-key loads)
+    require("config.which_key_groups").register("plugin-name", {
+      {
+        mode = { "n", "v" },
+        { "<leader>x", group = "Plugin Name" },
+      },
+    })
+  end,
+  -- ... rest of plugin config
+}
+```
+
+**Critical**: Use the `init` function (not `config`) to ensure groups are registered before which-key is loaded. This solves timing issues where groups defined in `config` functions aren't available when which-key displays.
+
 ### Performance Monitoring Built-in
 Includes startup profiling, health checks, and performance monitoring as first-class features.

@@ -1,5 +1,14 @@
 return {
 	"folke/trouble.nvim",
+	init = function()
+		-- Register which-key group early so it's available when which-key loads
+		require("config.which_key_groups").register("trouble", {
+			{
+				mode = { "n", "v" },
+				{ "<leader>x", group = "Trouble" },
+			},
+		})
+	end,
 	opts = {
 		modes = {
 			preview_float = {
@@ -50,4 +59,7 @@ return {
 			desc = "Quickfix List (Trouble)",
 		},
 	},
+	config = function(opts)
+		require("trouble").setup(opts)
+	end,
 }
