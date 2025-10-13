@@ -1,0 +1,26 @@
+std = "lua51"
+
+[lints]
+# Allow mixed tables since they're common in Neovim configs
+mixed_table = "allow"
+
+# Warn about unused variables but allow them
+unused_variable = "warn"
+
+# Allow undefined variables since vim globals are dynamic
+undefined_variable = "allow"
+
+# Warn about empty if statements
+empty_if = "warn"
+
+# Allow shadowing since it's common in callbacks
+shadowing = "allow"
+
+# Define custom globals for Neovim Lua development
+[config.globals]
+vim = "read_write"
+require = "read_only"
+package = "read_only"
+
+# Common globals in Neovim plugin development
+_G = "read_write"
