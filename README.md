@@ -31,7 +31,7 @@ A performance-focused [Neovim](https://neovim.io/) configuration showcasing mode
 │   │   ├── commands.lua       # LSP management commands
 │   │   ├── utils.lua          # LSP utility functions
 │   │   ├── configs/           # Language-specific configs
-│   │   └── README.md          # Comprehensive LSP documentation
+│   │   └── README.md          # LSP documentation
 │   └── plugins/               # Plugin specifications
 └── selene.toml                # Lua linting configuration
 ```

@@ -5,10 +5,11 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 ## Repository Overview
 
 **sysinit** is a high-performance, modular Neovim configuration optimized for development workflow. It features:
-- **~75ms startup time** with carefully selected plugins
+- **~75ms startup time** with 30+ carefully selected plugins
 - **Modular LSP system** with automatic tool management via Mason
 - **Performance-first architecture** with lazy loading and caching
 - **Modern Neovim 0.11+ APIs** throughout the codebase
+- **No tests** - This is a personal configuration, not a distribution
 
 ## Essential Commands
 
@@ -19,6 +20,9 @@ nvim --headless "+Lazy! sync" +qa
 
 # Profile startup performance
 nvim --startuptime startup.log +qa
+
+# Lint Lua files (requires selene)
+selene lua/
 ```
 
 ### Development Workflow
@@ -47,10 +51,22 @@ nvim --startuptime startup.log +qa
 ### Bootstrap Flow
 ```
 init.lua
-├── vim.loader.enable()     # Enable module caching
+├── vim.loader.enable()     # Enable module caching (Neovim 0.11+)
 ├── require("config")       # Load core configuration
+│   ├── Print ASCII art header
+│   ├── setup_mason()       # Initialize Mason paths
+│   ├── options.lua         # Neovim settings
+│   ├── keymaps.lua         # Key mappings
+│   └── autocmds.lua        # Auto commands
 └── require("Lazy")         # Initialize plugin manager
+    └── Import all plugins from lua/plugins/
 ```
+
+### Error Handling Philosophy
+- **Non-blocking startup**: Errors in module loading won't prevent Neovim from starting
+- **Graceful degradation**: Failed modules show notifications but don't crash
+- **Deferred error summary**: Full error report shown after 500ms delay
+- **Module caching**: Failed module loads are retried on next require
 
 ### Core Structure
 ```
@@ -79,6 +95,19 @@ init.lua
 ├── .gitignore                 # Git ignore patterns
 └── lazy-lock.json            # Plugin version lockfile (gitignored)
 ```
+
+## Code Quality
+
+### Linting
+- **selene** - Lua linter configured via `selene.toml`
+- Configuration allows mixed tables, undefined variables (for vim globals)
+- Runs on Lua files via command line: `selene lua/`
+
+### No Testing Framework
+This is a personal configuration without automated tests. Verification is done through:
+- `:checkhealth` - Neovim health checks
+- `:Lazy profile` - Plugin loading analysis
+- Manual testing with `nvim --startuptime`
 
 ## LSP Architecture
 
@@ -158,12 +187,14 @@ This configuration is heavily optimized for startup performance and runtime effi
 ### Plugin Categories
 - **Core**: lazy.nvim, blink.cmp (completion), nvim-treesitter
 - **LSP**: nvim-lspconfig, mason.nvim, conform.nvim, nvim-lint
-- **AI**: copilot.lua, copilot-lsp (NES), CopilotChat, sidekick
+- **AI**: copilot.lua, copilot-lsp (NES), CopilotChat, sidekick (in ai.lua)
 - **UI/UX**: onedarkpro (theme), lualine (statusline), noice (UI), trouble (diagnostics), vim-illuminate
 - **Navigation**: telescope, harpoon, neovim-project
-- **Git**: gitsigns, diffview, worktree
+- **Git**: gitsigns, diffview (in git.lua and diffview.lua)
 - **Editing**: better-escape, grug-far (find/replace), refactoring, suda (sudo), undo-tree
 - **Utilities**: which-key, toggleterm, nvim-dap, nvim-dbee, snacks, nvim-bqf, showkeys, render-markdown
+
+**Plugin file organization**: Each plugin spec is in a separate file under `lua/plugins/`, imported automatically by lazy.nvim.
 
 ### Adding New Plugins
 Create new file in `lua/plugins/` following this pattern:
@@ -180,7 +211,7 @@ return {
 
 - **Current startup time**: ~75ms
 - **Target startup time**: <100ms (good), <50ms (excellent)
-- **Plugin count**: 25+ (carefully curated)
+- **Plugin count**: 30 carefully curated plugins
 - **Memory usage**: Optimized with lazy loading
 - **LSP languages**: Modular system (Lua, Python, Go, TypeScript configured by default)
 
@@ -236,27 +267,6 @@ Supports complex linter setups like selene with custom config files via `lint_co
 
 ### Window Navigation Integration
 Includes zellij-nav plugin for seamless terminal multiplexer integration.
-
-### Dynamic Which-Key Group Registration
-Plugins can dynamically register their which-key groups using the `config.which_key_groups` registry:
-
-```lua
-return {
-  "plugin/name",
-  init = function()
-    -- Register which-key group early (before which-key loads)
-    require("config.which_key_groups").register("plugin-name", {
-      {
-        mode = { "n", "v" },
-        { "<leader>x", group = "Plugin Name" },
-      },
-    })
-  end,
-  -- ... rest of plugin config
-}
-```
-
-**Critical**: Use the `init` function (not `config`) to ensure groups are registered before which-key is loaded. This solves timing issues where groups defined in `config` functions aren't available when which-key displays.
 
 ### Performance Monitoring
 Includes lazy.nvim profiling and Neovim's built-in health checks for diagnostics.
