@@ -1,0 +1,448 @@
+-- Git Worktree Integration for Neovim Project
+-- This module provides seamless integration between neovim-project and git-worktree
+-- without requiring a fork of either plugin.
+
+local M = {}
+
+-- Cache for loaded modules
+local _modules = {}
+
+-- Lazy require function
+local function lazy_require(name)
+	if not _modules[name] then
+		local ok, module = pcall(require, name)
+		if ok then
+			_modules[name] = module
+		else
+			return nil
+		end
+	end
+	return _modules[name]
+end
+
+-- Check if git-worktree is available
+function M.is_git_worktree_available()
+	return lazy_require("git-worktree") ~= nil
+end
+
+-- Check if a directory is inside a git worktree
+function M.is_inside_git_worktree(dir)
+	if not dir then
+		return false
+	end
+
+	local current_dir = vim.fn.getcwd()
+
+	-- Temporarily change to the target directory
+	local success = pcall(function()
+		vim.fn.chdir(dir)
+	end)
+
+	if not success then
+		return false
+	end
+
+	-- Check if we're in a git repository
+	vim.fn.system("git rev-parse --is-inside-work-tree")
+	local inside_worktree = vim.v.shell_error == 0
+
+	-- Restore original directory
+	pcall(function()
+		vim.fn.chdir(current_dir)
+	end)
+
+	return inside_worktree
+end
+
+-- Show git worktree picker and setup handlers
+function M.show_worktree_picker(dir)
+	if not M.is_git_worktree_available() then
+		vim.notify("git-worktree plugin not available", vim.log.levels.WARN)
+		return false
+	end
+
+	local telescope = lazy_require("telescope")
+	local worktree = lazy_require("git-worktree")
+
+	if not (telescope and worktree) then
+		vim.notify("Required modules not available", vim.log.levels.ERROR)
+		return false
+	end
+
+	-- Change to the project directory
+	vim.cmd("lcd " .. vim.fn.fnameescape(dir))
+
+	-- Setup worktree change handler - let neovim-project handle session management
+	worktree.on_tree_change(function(op, metadata)
+		if op == worktree.Operations.Switch then
+			local path = metadata and metadata.path or "unknown"
+			print(string.format("🌳 Worktree switched to: %s", path))
+
+			-- Let neovim-project handle the session management automatically
+			-- It detects CWD changes and switches sessions accordingly
+
+			-- Refresh UI components after worktree switch to update git branch
+			-- refresh_ui_components()
+
+			-- Optionally notify the user
+			vim.schedule(function()
+				vim.notify(
+					string.format("Switched to worktree: %s", vim.fn.fnamemodify(path, ":t")),
+					vim.log.levels.INFO,
+					{ title = "Git Worktree" }
+				)
+			end)
+		elseif op == worktree.Operations.Create then
+			local path = metadata and metadata.path or "unknown"
+			print(string.format("🌱 Created worktree: %s", path))
+		-- Refresh UI components after creating worktree
+		-- refresh_ui_components()
+		elseif op == worktree.Operations.Delete then
+			local path = metadata and metadata.path or "unknown"
+			print(string.format("🔥 Deleted worktree: %s", path))
+			-- Refresh UI components after deleting worktree
+			-- refresh_ui_components()
+		end
+	end)
+
+	-- Show worktree picker
+	vim.schedule(function()
+		telescope.extensions.git_worktree.git_worktrees()
+	end)
+
+	return true
+end
+
+-- Refresh UI components after project/worktree changes
+local function refresh_ui_components()
+	vim.schedule(function()
+		-- Wait a bit for directory change to be fully processed
+		vim.defer_fn(function()
+			-- Clear any cached git status
+			vim.fn.system("cd " .. vim.fn.fnameescape(vim.fn.getcwd()))
+
+			-- Force refresh of lualine components
+			local ok, lualine = pcall(require, "lualine")
+			if ok then
+				-- Force a complete refresh by re-setup (more aggressive)
+				lualine.refresh()
+
+				-- Also refresh again after a short delay
+				vim.defer_fn(function()
+					lualine.refresh()
+				end, 200)
+			end
+
+			-- Trigger multiple autocmds to ensure all plugins refresh
+			vim.api.nvim_exec_autocmds("DirChanged", {
+				data = {
+					cwd = vim.fn.getcwd(),
+					scope = "global",
+				},
+			})
+
+			vim.api.nvim_exec_autocmds("BufEnter", { buffer = 0 })
+
+			-- Also trigger a generic User event for custom refreshes
+			vim.api.nvim_exec_autocmds("User", {
+				pattern = "ProjectWorktreeChanged",
+				data = { cwd = vim.fn.getcwd() },
+			})
+		end, 50) -- Small delay to ensure directory change is processed
+	end)
+end
+
+-- Enhanced project switching with worktree support
+function M.enhanced_project_switch(dir, switch_type)
+	print(string.format("🚀 Enhanced project switch: %s (type: %s)", dir, switch_type or "none"))
+
+	-- Expand the directory path
+	local expanded_dir = vim.fn.expand(dir)
+
+	-- Check if this is a history selection (skip worktree for history)
+	if switch_type == "history" then
+		print("📜 History selection - using normal project switch")
+		-- Just change directory, neovim-project handles session management
+		vim.cmd("cd " .. vim.fn.fnameescape(expanded_dir))
+		-- Refresh UI components to update git branch info
+		-- refresh_ui_components()
+		return false
+	end
+
+	-- Check if the project is in a git worktree
+	local is_worktree = M.is_inside_git_worktree(expanded_dir)
+	print(string.format("🔍 Git worktree check: %s", is_worktree and "YES" or "NO"))
+
+	if is_worktree then
+		print("🌳 Showing worktree picker...")
+		return M.show_worktree_picker(expanded_dir)
+	else
+		print("📁 Using normal project switch")
+		-- Just change directory, neovim-project handles session management
+		vim.cmd("cd " .. vim.fn.fnameescape(expanded_dir))
+		-- Refresh UI components to update git branch info
+		-- refresh_ui_components()
+		return false
+	end
+end
+
+-- Create a telescope action wrapper for project selection
+function M.create_telescope_action(switch_type)
+	return function(prompt_bufnr)
+		local actions = lazy_require("telescope.actions")
+		local action_state = lazy_require("telescope.actions.state")
+
+		if not (actions and action_state) then
+			return
+		end
+
+		local selected_entry = action_state.get_selected_entry()
+		if not selected_entry then
+			actions.close(prompt_bufnr)
+			return
+		end
+
+		local dir = selected_entry.value
+		actions.close(prompt_bufnr)
+
+		-- Use enhanced switching
+		M.enhanced_project_switch(dir, switch_type)
+	end
+end
+
+local augroup = vim.api.nvim_create_augroup("user_cmds", { clear = true })
+
+vim.api.nvim_create_autocmd("User", {
+	pattern = { "SessionLoadPost" },
+	group = augroup,
+	desc = "Switch to Normal Mode",
+	callback = function()
+		-- Switch to Normal Mode
+		vim.cmd("stopinsert")
+	end,
+})
+
+-- Setup user commands
+function M.setup_commands()
+	-- Command to show worktrees for current project
+	vim.api.nvim_create_user_command("ProjectWorktrees", function()
+		local history = lazy_require("neovim-project.utils.history")
+
+		if not history then
+			vim.notify("neovim-project history not available", vim.log.levels.ERROR)
+			return
+		end
+
+		local recent_projects = history.get_recent_projects()
+		local current_project = recent_projects and recent_projects[1]
+
+		if current_project and M.is_inside_git_worktree(current_project.path) then
+			M.show_worktree_picker(current_project.path)
+		else
+			vim.notify("Current project is not in a git worktree", vim.log.levels.INFO)
+		end
+	end, { desc = "Show git worktrees for current project" })
+
+	-- Command to switch to project with worktree support
+	vim.api.nvim_create_user_command("ProjectSwitchWithWorktree", function(opts)
+		local dir = opts.args
+		if dir == "" then
+			vim.notify("Please provide a project directory", vim.log.levels.ERROR)
+			return
+		end
+
+		M.enhanced_project_switch(vim.fn.expand(dir))
+	end, {
+		desc = "Switch to project with worktree support",
+		nargs = 1,
+		complete = "dir",
+	})
+
+	-- Command to check worktree status
+	vim.api.nvim_create_user_command("ProjectWorktreeStatus", function()
+		local cwd = vim.fn.getcwd()
+		local is_worktree = M.is_inside_git_worktree(cwd)
+
+		if is_worktree then
+			vim.notify("Current directory is in a git worktree: " .. cwd, vim.log.levels.INFO)
+
+			-- Show current worktree info if git-worktree is available
+			if M.is_git_worktree_available() then
+				vim.schedule(function()
+					local telescope = lazy_require("telescope")
+					if telescope then
+						telescope.extensions.git_worktree.git_worktrees()
+					end
+				end)
+			end
+		else
+			vim.notify("Current directory is not in a git worktree: " .. cwd, vim.log.levels.INFO)
+		end
+	end, { desc = "Check current project worktree status" })
+end
+
+-- Setup telescope integration by intercepting the extension functions
+function M.setup_telescope_integration()
+	vim.defer_fn(function()
+		local telescope = lazy_require("telescope")
+		if not telescope then
+			vim.defer_fn(M.setup_telescope_integration, 1000)
+			return
+		end
+
+		-- Load the neovim-project extension
+		pcall(telescope.load_extension, "neovim-project")
+
+		-- Get the extension functions
+		local extension = telescope.extensions["neovim-project"]
+		if not extension then
+			print("⚠ Neovim-project extension not found, retrying...")
+			vim.defer_fn(M.setup_telescope_integration, 1000)
+			return
+		end
+
+		-- Store original functions
+		local original_discover = extension.discover
+		local original_history = extension.history
+
+		if original_discover then
+			-- Override the discover function
+			extension.discover = function(opts)
+				opts = opts or {}
+
+				-- Call the original discover function but intercept the picker
+				local original_attach_mappings = opts.attach_mappings
+
+				opts.attach_mappings = function(prompt_bufnr, map)
+					-- Call original attach_mappings first if it exists
+					if original_attach_mappings then
+						original_attach_mappings(prompt_bufnr, map)
+					end
+
+					local actions = lazy_require("telescope.actions")
+					local action_state = lazy_require("telescope.actions.state")
+
+					if not (actions and action_state) then
+						return true
+					end
+
+					-- Create our custom select function
+					local function worktree_select()
+						local selected_entry = action_state.get_selected_entry()
+						if not selected_entry then
+							actions.close(prompt_bufnr)
+							return
+						end
+
+						local dir = selected_entry.value
+						actions.close(prompt_bufnr)
+
+						print("🔍 Selected project: " .. dir)
+						-- Use enhanced switching with worktree support
+						M.enhanced_project_switch(dir, "discover")
+					end
+
+					-- Override the default select action
+					actions.select_default:replace(worktree_select)
+					map("i", "<CR>", worktree_select)
+					map("n", "<CR>", worktree_select)
+
+					return true
+				end
+
+				-- Call the original function with our modified opts
+				return original_discover(opts)
+			end
+
+			print("✅ Intercepted neovim-project discover function")
+		end
+
+		if original_history then
+			-- Override the history function
+			extension.history = function(opts)
+				opts = opts or {}
+
+				local original_attach_mappings = opts.attach_mappings
+
+				opts.attach_mappings = function(prompt_bufnr, map)
+					if original_attach_mappings then
+						original_attach_mappings(prompt_bufnr, map)
+					end
+
+					local actions = lazy_require("telescope.actions")
+					local action_state = lazy_require("telescope.actions.state")
+
+					if not (actions and action_state) then
+						return true
+					end
+
+					local function worktree_select_history()
+						local selected_entry = action_state.get_selected_entry()
+						if not selected_entry then
+							actions.close(prompt_bufnr)
+							return
+						end
+
+						local dir = selected_entry.value
+						actions.close(prompt_bufnr)
+
+						print("📜 Selected from history: " .. dir)
+						-- Use enhanced switching (history type - skip worktree for recent projects)
+						M.enhanced_project_switch(dir, "history")
+					end
+
+					actions.select_default:replace(worktree_select_history)
+					map("i", "<CR>", worktree_select_history)
+					map("n", "<CR>", worktree_select_history)
+
+					return true
+				end
+
+				return original_history(opts)
+			end
+
+			print("✅ Intercepted neovim-project history function")
+		end
+	end, 1000)
+end
+
+-- Setup autocmds for UI refresh on directory changes
+local function setup_refresh_autocmds()
+	local augroup = vim.api.nvim_create_augroup("ProjectWorktreeRefresh", { clear = true })
+
+	-- Refresh UI when directory changes
+	vim.api.nvim_create_autocmd({ "DirChanged" }, {
+		group = augroup,
+		callback = function()
+			-- refresh_ui_components()
+		end,
+	})
+
+	-- Also refresh when entering a buffer in a different directory
+	vim.api.nvim_create_autocmd({ "BufEnter" }, {
+		group = augroup,
+		callback = function()
+			-- Only refresh if we're in a different directory than the buffer
+			local buf_dir = vim.fn.expand("%:p:h")
+			local cwd = vim.fn.getcwd()
+			if buf_dir ~= cwd and vim.fn.isdirectory(buf_dir) == 1 then
+				-- vim.defer_fn(refresh_ui_components, 100)
+			end
+		end,
+	})
+end
+
+-- Auto-setup function
+function M.setup()
+	print("🔧 Setting up project-worktree integration...")
+
+	M.setup_commands()
+	-- setup_refresh_autocmds()
+
+	-- Setup telescope integration after a delay to ensure telescope is loaded
+	-- vim.defer_fn(M.setup_telescope_integration, 500)
+
+	print("✅ Project-worktree integration setup complete")
+end
+
+return M

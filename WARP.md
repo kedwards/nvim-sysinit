@@ -5,10 +5,11 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 ## Repository Overview
 
 **sysinit** is a high-performance, modular Neovim configuration optimized for development workflow. It features:
-- **~38ms startup time** with ~30 carefully selected plugins
+- **~75ms startup time** with 30+ carefully selected plugins
 - **Modular LSP system** with automatic tool management via Mason
 - **Performance-first architecture** with lazy loading and caching
 - **Built-in health monitoring** and startup profiling
+- **Modern Neovim 0.11+ APIs** throughout the codebase
 
 ## Essential Commands
 
@@ -62,21 +63,28 @@ init.lua
 ├── init.lua                    # Main entry point with error handling
 ├── lua/
 │   ├── config/                 # Core configuration modules
-│   │   ├── init.lua           # Config loader with ASCII art
+│   │   ├── init.lua           # Config loader with ASCII art header
 │   │   ├── options.lua        # Neovim settings (performance optimized)
-│   │   ├── keymaps.lua        # Key mappings (table-driven approach)
-│   │   ├── autocmds.lua       # Auto commands
-│   │   └── health.lua         # Configuration health checks
+│   │   ├── keymaps.lua        # Key mappings (helper function approach)
+│   │   ├── autocmds.lua       # Auto commands (grouped by purpose)
+│   │   └── utils.lua          # Path management and Mason setup
 │   ├── lsp/                   # Modular LSP system
+│   │   ├── init.lua           # LSP entry point
 │   │   ├── loader.lua         # Modern LSP loader with caching
 │   │   ├── config.lua         # Global LSP configuration
 │   │   ├── capabilities.lua   # Enhanced LSP capabilities
+│   │   ├── diagnostics.lua    # Diagnostic configuration
 │   │   ├── keymaps.lua        # LSP keybindings
 │   │   ├── notifications.lua  # Notification control system
+│   │   ├── commands.lua       # LSP management commands
+│   │   ├── utils.lua          # LSP utility functions
+│   │   ├── configs/           # Language-specific configurations
 │   │   └── README.md          # Comprehensive LSP documentation
+│   ├── Lazy.lua               # Plugin manager initialization
 │   └── plugins/               # Plugin specifications (lazy-loaded)
 ├── selene.toml                # Lua linting configuration
-└── lazy-lock.json            # Plugin version lockfile
+├── .gitignore                 # Git ignore patterns
+└── lazy-lock.json            # Plugin version lockfile (gitignored)
 ```
 
 ## LSP Architecture
@@ -165,9 +173,11 @@ This configuration is heavily optimized for startup performance and runtime effi
 ### Plugin Categories
 - **Core**: lazy.nvim, blink.cmp (completion), nvim-treesitter
 - **LSP**: nvim-lspconfig, mason.nvim, conform.nvim, nvim-lint
+- **AI**: copilot.lua, copilot-lsp (NES), CopilotChat, sidekick
 - **UI/UX**: onedarkpro (theme), lualine (statusline), noice (UI), trouble (diagnostics)
-- **Navigation**: mini_files (file explorer), which-key (keybind helper)
-- **Utilities**: copilot (AI assistance), snacks (various utilities)
+- **Navigation**: telescope, harpoon, neovim-project
+- **Git**: gitsigns, diffview, worktree
+- **Utilities**: which-key, toggleterm, nvim-dap, nvim-dbee, snacks
 
 ### Adding New Plugins
 Create new file in `lua/plugins/` following this pattern:
@@ -191,10 +201,11 @@ The configuration includes comprehensive health monitoring:
 - **Startup performance tracking** - Monitors and reports timing
 
 ### Performance Benchmarks
-- **Target startup time**: <50ms (excellent), <100ms (good)
-- **Plugin count**: ~30 (carefully curated)
+- **Current startup time**: ~75ms
+- **Target startup time**: <100ms (good), <50ms (excellent)
+- **Plugin count**: 30+ (carefully curated)
 - **Memory usage**: Optimized with lazy loading
-- **LSP languages**: 4+ pre-configured (Lua, Python, Go, TypeScript)
+- **LSP languages**: Modular system (Lua configured by default)
 
 ## Troubleshooting
 
@@ -238,10 +249,10 @@ If startup becomes slow:
 ### ASCII Art Startup Header
 The configuration displays a custom ASCII art header defined in `lua/config/init.lua`.
 
-### Table-Driven Keymaps
-Keymaps use a structured table approach in `lua/config/keymaps.lua` for maintainability:
+### Helper Function Keymaps
+Keymaps use a helper function approach in `lua/config/keymaps.lua` for maintainability:
 ```lua
-{ "n", "<leader>x", ":command", "Description" }
+map("n", "<leader>x", ":command", "Description")
 ```
 
 ### Custom Linter Configuration

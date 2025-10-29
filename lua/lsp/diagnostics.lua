@@ -4,7 +4,7 @@ local M = {}
 function M.setup()
   -- Configure diagnostic display
   vim.diagnostic.config({
-    -- Enable virtual text with modern styling
+    -- Enable virtual text with styling
     virtual_text = {
       enabled = true,
       source = "if_many",
@@ -19,11 +19,11 @@ function M.setup()
       end,
     },
 
-    -- Show signs in the gutter with modern configuration
+    -- Show signs in the gutter
     signs = {
       text = {
         [vim.diagnostic.severity.ERROR] = "✘",
-        [vim.diagnostic.severity.WARN] = "▲", 
+        [vim.diagnostic.severity.WARN] = "▲",
         [vim.diagnostic.severity.INFO] = "»",
         [vim.diagnostic.severity.HINT] = "⚑",
       },
@@ -69,8 +69,6 @@ function M.setup()
     },
   })
 
-  -- Diagnostic signs are now configured above in vim.diagnostic.config()
-
   -- Configure diagnostic highlight groups
   local diagnostic_groups = {
     -- Virtual text colors
@@ -114,14 +112,6 @@ function M.setup_keymaps()
   local opts = { noremap = true, silent = true }
 
   -- Diagnostic navigation
-  map("n", "<leader>dn", diagnostic_nav("next"), vim.tbl_extend("force", opts, {
-    desc = "Go to next diagnostic"
-  }))
-
-  map("n", "<leader>dp", diagnostic_nav("prev"), vim.tbl_extend("force", opts, {
-    desc = "Go to previous diagnostic"
-  }))
-
   map("n", "<leader>dd", vim.diagnostic.open_float, vim.tbl_extend("force", opts, {
     desc = "Show line diagnostics"
   }))
@@ -140,15 +130,15 @@ function M.setup_keymaps()
       virtual_text = { severity = vim.diagnostic.severity.ERROR }
     })
   end, vim.tbl_extend("force", opts, {
-    desc = "Show only error diagnostics"
-  }))
+  desc = "Show only error diagnostics"
+}))
 
-  vim.keymap.set("n", "<leader>da", function()
-    vim.diagnostic.config({
-      virtual_text = { enabled = true }
-    })
-  end, vim.tbl_extend("force", opts, {
-    desc = "Show all diagnostics"
+vim.keymap.set("n", "<leader>da", function()
+  vim.diagnostic.config({
+    virtual_text = { enabled = true }
+  })
+end, vim.tbl_extend("force", opts, {
+desc = "Show all diagnostics"
   }))
 
   vim.keymap.set("n", "<leader>dt", function()
@@ -157,8 +147,8 @@ function M.setup_keymaps()
       virtual_text = not config.virtual_text
     })
   end, vim.tbl_extend("force", opts, {
-    desc = "Toggle diagnostic virtual text"
-  }))
+  desc = "Toggle diagnostic virtual text"
+}))
 end
 
 --- Initialize all diagnostic configurations

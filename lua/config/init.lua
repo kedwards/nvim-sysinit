@@ -38,9 +38,10 @@ M.header = [[
 ]]
 
 function M.setup()
-  require("config.options")()
-  require("config.keymaps")()
-  require("config.autocmds")()
+	require("config.utils").setup_mason()
+	require("config.options")()
+	require("config.keymaps")()
+	require("config.autocmds")()
 end
 
 M.setup()

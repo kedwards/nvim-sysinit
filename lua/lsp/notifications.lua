@@ -1,7 +1,56 @@
 local M = {}
 
+-- local M = {
+-- 	-- Notification settings
+-- 	notifications = {
+-- 		server_config = true, -- "Configured LSP servers" messages
+-- 		server_enable = true, -- "Enabled LSP server" messages
+-- 		server_disable = true, -- "Disabled LSP server" messages
+-- 		server_start = true, -- "Started LSP server" messages
+-- 		server_stop = true, -- "Stopped LSP server" messages
+-- 		server_restart = true, -- "Restarting LSP server" messages
+-- 		errors_only = true, -- Only show ERROR level notifications
+-- 	},
+-- }
+--
+-- --- LSP notifications
+-- --- @param message string The notification message
+-- --- @param level number vim.log.levels (ERROR, WARN, INFO, etc.)
+-- --- @param notification_type string The type of notification (server_config, server_enable, etc.)
+-- --- @param opts? table Additional notification options
+-- local function lsp_notify(message, level, notification_type, opts)
+-- 	opts = opts or { title = "LSP" }
+--
+-- 	-- Always show errors
+-- 	if level == vim.log.levels.ERROR then
+-- 		vim.notify(message, level, opts)
+-- 		return
+-- 	end
+--
+-- 	-- If errors_only is true, skip non-error notifications
+-- 	if M.notifications.errors_only then
+-- 		return
+-- 	end
+--
+-- 	-- Check if this notification type is enabled
+-- 	if M.notifications[notification_type] then
+-- 		vim.notify(message, level, opts)
+-- 	end
+-- end
+--
+-- --- Configure LSP notification settings
+-- --- @param opts table Notification configuration options
+-- function M.configure_notifications(opts)
+-- 	M.notifications = vim.tbl_deep_extend("force", M.notifications, opts or {})
+-- end
+--
 -- Notification configuration with all available message types
 M.config = {
+	-- Show LSP attach/detach messages
+	show_attach_detach = false,
+	show_server_notifications = false,
+	show_config_loaded_messages = false,
+
 	-- Loader messages
 	config_loaded = false, -- "Loaded X language configurations"
 	server_configured = false, -- "LSP: X/X servers configured"
@@ -53,6 +102,7 @@ local notification_types = {
 	tool_missing = { title = "Mason", level = vim.log.levels.WARN, description = "Missing tool warnings" },
 	format_warning = { title = "LSP", level = vim.log.levels.WARN, description = "Formatting warnings" },
 	lint_warning = { title = "LSP", level = vim.log.levels.WARN, description = "Linting warnings" },
+	toggle_all = { title = "LSP", level = vim.log.levels.INFO, description = "Toggle attach/detach messages" },
 }
 
 --- Core notification function with filtering
@@ -179,4 +229,3 @@ function M.setup()
 end
 
 return M
-

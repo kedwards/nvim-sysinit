@@ -74,24 +74,28 @@ function M.get_tools(config_type)
 	end
 
 	local configs = M.read_configs()
+
+	-- vim.notify(vim.inspect(configs), vim.log.levels.DEBUG, { title = "LSP Loader" })
+
 	local tools = {
 		lsp = {},
 		format = {},
 		lint = {},
-		dap = {},
+		debug = {},
 	}
 
 	local seen = {
 		lsp = {},
 		format = {},
 		lint = {},
-		dap = {},
+		debug = {},
 	}
 
 	for _, config in pairs(configs) do
 		-- Extract LSP servers
 		if config.lsp then
-			for server_name, _ in pairs(config.lsp) do
+			for key, conf in pairs(config.lsp) do
+				local server_name = conf.name or key
 				if not seen.lsp[server_name] then
 					table.insert(tools.lsp, server_name)
 					seen.lsp[server_name] = true
@@ -127,7 +131,7 @@ function M.get_tools(config_type)
 			end
 		end
 
-		-- Also extract linters from custom lint_config
+		-- Extract linters from custom lint_config
 		if config.lint_config then
 			for linter_name, _ in pairs(config.lint_config) do
 				if not seen.lint[linter_name] then
@@ -138,11 +142,11 @@ function M.get_tools(config_type)
 		end
 
 		-- Extract DAP adapters
-		if config.dap then
-			for dap_name, _ in pairs(config.dap) do
-				if not seen.dap[dap_name] then
-					table.insert(tools.dap, dap_name)
-					seen.dap[dap_name] = true
+		if config.debug and config.debug.adapters then
+			for adapter_name, _ in pairs(config.debug.adapters) do
+				if not seen.debug[adapter_name] then
+					table.insert(tools.debug, adapter_name)
+					seen.debug[adapter_name] = true
 				end
 			end
 		end
@@ -185,7 +189,7 @@ end
 function M.get_custom_linter_configs(linter_name)
 	local configs = M.read_configs()
 	local result = {}
-	
+
 	for _, config in pairs(configs) do
 		if config.lint_config then
 			if linter_name then
@@ -201,7 +205,7 @@ function M.get_custom_linter_configs(linter_name)
 			end
 		end
 	end
-	
+
 	return result
 end
 
@@ -268,6 +272,45 @@ function M.setup_lsp_servers(capabilities)
 	return results
 end
 
+--- Setup DAP
+--- @return boolean Success status
+function M.setup_debugging()
+	local configs = M.read_configs()
+	local dap = M.lazy_require("dap")
+
+	if not dap then
+		vim.notify("nvim-dap not available", vim.log.levels.WARN, { title = "LSP Loader" })
+		return false
+	end
+
+	for _, config in pairs(configs) do
+		if config.debug then
+			-- Register adapters
+			for name, adapter in pairs(config.debug.adapters or {}) do
+				if type(adapter) == "function" or type(adapter) == "table" then
+					dap.adapters[name] = adapter
+				else
+					vim.notify(
+						("Invalid DAP adapter for %s: %s"):format(name, vim.inspect(adapter)),
+						vim.log.levels.WARN
+					)
+				end
+			end
+
+			-- Register configurations
+			for ft, setups in pairs(config.debug.configurations or {}) do
+				dap.configurations[ft] = dap.configurations[ft] or {}
+				-- append rather than overwrite
+				for _, setup in ipairs(setups) do
+					table.insert(dap.configurations[ft], setup)
+				end
+			end
+		end
+	end
+
+	return true
+end
+
 --- Setup formatting with conform.nvim
 --- @return boolean Success status
 function M.setup_formatting()
@@ -304,7 +347,7 @@ end
 --- @param lint table The nvim-lint module
 function M.apply_custom_linter_configs(lint)
 	local configs = M.read_configs()
-	
+
 	for _, config in pairs(configs) do
 		if config.lint_config then
 			for linter_name, linter_config in pairs(config.lint_config) do
@@ -316,7 +359,7 @@ function M.apply_custom_linter_configs(lint)
 					-- Create new linter config
 					lint.linters[linter_name] = linter_config
 				end
-				
+
 				-- Debug notification (controlled by notifications system)
 				local notifications = M.lazy_require("lsp.notifications")
 				if notifications then
@@ -357,36 +400,9 @@ function M.setup_linting()
 	return true
 end
 
--- Mapping from tool names to Mason package names
 local mason_name_map = {
-	-- LSP servers
-	lua_ls = "lua-language-server",
-	ts_ls = "typescript-language-server",
-	eslint = "eslint-lsp",
-	pyright = "pyright",
-	gopls = "gopls",
-	html = "html-lsp",
-	cssls = "css-lsp",
-	jsonls = "json-lsp",
-
-	-- Formatters
-	stylua = "stylua",
-	prettier = "prettier",
-	isort = "isort",
-	black = "black",
-	ruff = "ruff",
-	gofumpt = "gofumpt",
-	["goimports-reviser"] = "goimports-reviser",
-
-	-- Linters
-	selene = "selene",
-	mypy = "mypy",
-	["golangci-lint"] = "golangci-lint",
-	["eslint-lsp"] = "eslint-lsp",
-
 	-- Special cases where tool name != mason name
 	ruff_format = "ruff", -- ruff handles both linting and formatting
-	eslint_d = "eslint_d", -- faster eslint daemon
 }
 
 --- Get Mason package name for a tool
@@ -396,7 +412,7 @@ local function get_mason_name(tool_name)
 	return mason_name_map[tool_name] or tool_name
 end
 
---- Install tools using Mason
+--- Install tools using Mason with proper registry initialization
 --- @param tool_types? string[] Types of tools to install ("lsp", "format", "lint", "dap")
 --- @return table<string, boolean> Installation results
 function M.ensure_installed(tool_types)
@@ -412,6 +428,24 @@ function M.ensure_installed(tool_types)
 	if not mason_registry then
 		vim.notify("Mason registry not available", vim.log.levels.ERROR, { title = "LSP Loader" })
 		return {}
+	end
+
+	-- Wait for registry to be loaded if needed
+	if not mason_registry.is_installed or vim.tbl_count(mason_registry.get_all_package_names()) == 0 then
+		-- vim.notify("Waiting for Mason registry to initialize...", vim.log.levels.INFO, { title = "Mason" })
+		-- Use vim.wait to wait for registry to be ready
+		local ok = vim.wait(10000, function()
+			return vim.tbl_count(mason_registry.get_all_package_names()) > 0
+		end, 100)
+
+		if not ok then
+			vim.notify(
+				"Mason registry failed to initialize within 10 seconds",
+				vim.log.levels.WARN,
+				{ title = "Mason" }
+			)
+			return {}
+		end
 	end
 
 	local results = {}
@@ -494,7 +528,8 @@ function M.setup(opts)
 	-- Setup Mason first
 	local mason_ok, mason = pcall(require, "mason")
 	if mason_ok then
-		mason.setup(opts.mason or {
+		mason.setup(vim.tbl_deep_extend("force", {
+			-- default Mason configuration
 			ui = {
 				border = "rounded",
 				icons = {
@@ -503,7 +538,7 @@ function M.setup(opts)
 					package_uninstalled = "✗",
 				},
 			},
-		})
+		}, opts.mason or {}))
 	end
 
 	-- Install tools
@@ -512,21 +547,7 @@ function M.setup(opts)
 	end
 
 	-- Setup LSP servers
-	local lsp_results = M.setup_lsp_servers(opts.capabilities)
-	local lsp_count = vim.tbl_count(lsp_results)
-	local lsp_success = vim.tbl_count(vim.tbl_filter(function(v)
-		return v
-	end, lsp_results))
-
-	-- Show LSP server configuration summary (if enabled)
-	if lsp_count > 0 then
-		local notifications = M.lazy_require("lsp.notifications")
-		if notifications and notifications.should_show_config_messages then
-			notifications.should_show_config_messages(
-				string.format("LSP: %d/%d servers configured", lsp_success, lsp_count)
-			)
-		end
-	end
+	M.setup_lsp_servers(opts.capabilities)
 
 	-- Setup formatting
 	if opts.formatting ~= false then
@@ -538,11 +559,10 @@ function M.setup(opts)
 		M.setup_linting()
 	end
 
-	return {
-		lsp = lsp_results,
-		configs_loaded = vim.tbl_count(M.read_configs()),
-		tools = M.get_tools(),
-	}
+	-- Setup dap
+	if opts.debugging ~= false then
+		M.setup_debugging()
+	end
 end
 
 return M

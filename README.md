@@ -1,33 +1,34 @@
-# 🚀 Sysinit Neovim Configuration
+# 🚀 Sysinit - Personal Neovim Configuration
 
-A high-performance, modular Neovim configuration optimized for development workflow.
+A performance-focused [Neovim](https://neovim.io/) configuration showcasing modern Lua patterns, modular LSP architecture, and careful plugin selection. This is my personal setup shared as a reference implementation—not a distribution for direct use.
 
-## 📊 Performance Stats
+> **Note**: This configuration is tailored to my workflow and preferences. Feel free to explore and borrow ideas, but I recommend understanding each component rather than copying wholesale.
 
-- **Startup Time**: ~38ms (excellent!)
-- **Plugin Count**: ~30 carefully selected plugins
-- **Memory Usage**: Optimized with lazy loading
-- **LSP Languages**: 4+ pre-configured (Lua, Python, Go, TypeScript)
+## 📊 Performance
+
+- **Startup Time**: ~75ms with 30+ plugins
+- **Plugin Count**: 30 carefully selected plugins
+- **Loading Strategy**: Event-driven lazy loading
+- **Optimization**: vim.loader caching, disabled unused providers
 
 ## 🏗️ Architecture
 
 ```
-├── init.lua                    # Main entry point with error handling
+├── init.lua                   # Main entry point with error handling
 ├── lua/
-│   ├── config/                 # Core configuration
+│   ├── config/                # Core configuration
 │   │   ├── init.lua           # Config loader
-│   │   ├── options.lua        # Neovim settings (optimized)
-│   │   ├── keymaps.lua        # Key mappings (table-driven)
-│   │   ├── autocmds.lua       # Auto commands (organized)
+│   │   ├── options.lua        # Neovim settings
+│   │   ├── keymaps.lua        # Key mappings
+│   │   ├── autocmds.lua       # Auto commands
 │   │   └── health.lua         # Configuration health checks
-│   ├── lsp/                   # LSP system (modular)
+│   ├── lsp/                   # LSP system
 │   │   ├── loader.lua         # Modern LSP loader
 │   │   ├── configs/           # Language-specific configs
 │   │   ├── notifications.lua  # Notification control
 │   │   └── ...
 │   └── plugins/               # Plugin specifications
-├── selene.toml                # Lua linting configuration
-└── startup.log                # Performance profiling
+└── selene.toml                # Lua linting configuration
 ```
 
 ## 🎯 Key Features
@@ -48,10 +49,11 @@ A high-performance, modular Neovim configuration optimized for development workf
 
 ### 🎨 Modern UI/UX
 - **OneDark theme** with vivid variant
-- **Blink completion** with Copilot integration
-- **Noice UI** for better command/message experience
-- **Trouble diagnostics** with floating preview
-- **Lualine** with LSP status and file icons
+- **Blink.cmp** - Fast completion with Copilot + LuaSnip integration
+- **Noice** - Enhanced command line and notification UI
+- **Trouble** - Pretty diagnostics with floating preview
+- **Lualine** - Statusline with LSP status and git integration
+- **Telescope** - Fuzzy finding for files, buffers, and more
 
 ## 🔧 Management Commands
 
@@ -67,24 +69,6 @@ A high-performance, modular Neovim configuration optimized for development workf
 - `:Lazy` - Open plugin manager
 - `:Lazy sync` - Update all plugins
 - `:Lazy profile` - Profile plugin loading times
-
-## ⚡ Optimization Tips
-
-### Startup Time Optimization
-1. **Monitor startup**: Use `:ProfileStartup` regularly
-2. **Lazy load plugins**: Use `event`, `cmd`, or `keys` triggers
-3. **Disable unused features**: Check disabled providers in options.lua
-4. **Large files**: Auto-optimization kicks in for files >1MB
-
-### Memory Optimization
-1. **LSP notifications**: Disabled by default (use `:LspToggleAllNotifications`)
-2. **Treesitter**: Disabled for large files automatically
-3. **Plugin caching**: Enabled in lazy.nvim configuration
-
-### Development Workflow
-1. **Health checks**: Run `:ConfigHealth` periodically
-2. **Tool management**: Use `:LspInstallMissing` for new projects
-3. **Custom linters**: Add to `lua/lsp/configs/` with `lint_config`
 
 ## 🛠️ Customization Guide
 
@@ -113,49 +97,51 @@ return {
 ```
 
 ### Keymap Customization
-Keymaps use table-driven approach in `lua/config/keymaps.lua`:
+Keymaps use a helper function in `lua/config/keymaps.lua`:
 ```lua
-{ "n", "<leader>x", ":command", "Description" }
+map("n", "<leader>x", ":command", "Description")
 ```
 
-## 📋 Health Monitoring
+## ⚠️ Before Using
 
-### Built-in Health Checks
-- **Configuration loading**: Validates all modules load correctly
-- **Plugin status**: Verifies essential plugins are functional
-- **External tools**: Checks availability of rg, fd, git
-- **LSP configurations**: Counts available language configs
-- **Startup performance**: Tracks and reports timing
+This is a **personal configuration** shared for educational purposes:
 
-### Performance Monitoring
-- **Startup profiling**: Automatic with vim-startuptime
-- **Plugin profiling**: Built into lazy.nvim
-- **Large file detection**: Auto-optimization for 1MB+ files
-- **Memory usage**: Lazy loading minimizes footprint
+1. **Review before use** - Understand what each plugin and setting does
+2. **Copilot required** - AI completion features need a GitHub Copilot subscription
+3. **Dependencies** - Requires `git`, `rg` (ripgrep), `fd`, and a Nerd Font
+4. **Neovim 0.11+** - Built for the latest Neovim APIs
+5. **Adapt to your needs** - This reflects my workflow; yours will differ
 
-## 🚀 Next Steps
+## 🚀 Quick Start
 
-1. **Run health check**: `:ConfigHealth`
-2. **Profile startup**: `:ProfileStartup`
-3. **Check tool availability**: `:LspShowTools`
-4. **Install missing tools**: `:LspInstallMissing`
-5. **Customize keymaps**: Edit `lua/config/keymaps.lua`
-6. **Add languages**: Use `:LspNewConfig <name>`
+If you still want to try it:
 
-## 🐛 Troubleshooting
+```bash
+# Backup your existing config
+mv ~/.config/nvim ~/.config/nvim.backup
 
-### Common Issues
-- **Slow startup**: Run `:ProfileStartup` and check lazy loading
-- **LSP not working**: Use `:LspInfo` and `:ConfigHealth`
-- **Missing tools**: Run `:LspInstallMissing`
-- **Notifications**: Toggle with `:LspToggleAllNotifications`
+# Clone this config
+git clone <your-repo-url> ~/.config/nvim
 
-### Debug Mode
-Enable verbose logging for troubleshooting:
-```lua
-vim.lsp.set_log_level("debug")  -- In any config file
+# Start Neovim (plugins will auto-install)
+nvim
+
+# Check health
+:checkhealth
+:ConfigHealth
 ```
 
----
+## 🔧 Key Technologies
 
-**Configuration Health**: Run `:ConfigHealth` to verify optimal setup!
+- **Neovim 0.11+** - Latest APIs and performance improvements
+- **lazy.nvim** - Modern plugin manager with lazy loading
+- **Blink.cmp** - Fast completion engine written in Lua
+- **Mason** - Automatic LSP/formatter/linter installation
+- **Conform.nvim** - Async formatting
+- **nvim-lint** - Async linting with custom configurations
+- **Treesitter** - Advanced syntax highlighting
+- **Telescope** - Fuzzy finder interface
+
+## 📝 License
+
+This configuration is provided as-is for educational purposes. Feel free to learn from it, but please don't blindly copy. Build your own config that works for you!

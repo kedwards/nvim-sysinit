@@ -1,3 +1,25 @@
+--- Helper function to send notifications based on configuration
+local function lsp_notify(message, level, notification_type, opts)
+	opts = opts or { title = "LSP" }
+
+	-- Always show errors
+	if level == vim.log.levels.ERROR then
+		vim.notify(message, level, opts)
+		return
+	end
+
+	-- Check notification type
+	if notification_type == "attach" and not M.config.show_attach_notifications then
+		return
+	end
+
+	if notification_type == "server" and not M.config.show_server_notifications then
+		return
+	end
+
+	vim.notify(message, level, opts)
+end
+
 # Modern LSP Configuration System
 
 This is a comprehensive, performant LSP loader system for Neovim 0.11+ that automatically loads and configures LSP servers, formatters, and linters from modular configuration files.
@@ -65,7 +87,7 @@ return {
 ### ✨ **Automatic Tool Management**
 
 - Reads all config files from `lua/lsp/configs/`
-- Extracts LSP servers, formatters, and linters
+- Extracts LSP servers, formatters, linters, and debuggers
 - Automatically installs missing tools via Mason
 - Caches results for performance
 
@@ -151,8 +173,9 @@ require("lsp") -- Automatically loads everything
 
 _full featured_
 
+LazyNvim
+
 ```lua
-require("lsp") -- Automatically loads everything
 return {
 	"neovim/nvim-lspconfig",
 	event = { "BufReadPre", "BufNewFile" },
