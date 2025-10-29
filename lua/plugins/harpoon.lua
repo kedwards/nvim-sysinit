@@ -68,4 +68,3 @@ return {
 		require("harpoon"):setup(opts)
 	end,
 }
-

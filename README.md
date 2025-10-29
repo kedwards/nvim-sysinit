@@ -21,12 +21,17 @@ A performance-focused [Neovim](https://neovim.io/) configuration showcasing mode
 │   │   ├── options.lua        # Neovim settings
 │   │   ├── keymaps.lua        # Key mappings
 │   │   ├── autocmds.lua       # Auto commands
-│   │   └── health.lua         # Configuration health checks
+│   │   └── utils.lua          # Path management and Mason setup
 │   ├── lsp/                   # LSP system
 │   │   ├── loader.lua         # Modern LSP loader
+│   │   ├── config.lua         # Global LSP configuration
+│   │   ├── capabilities.lua   # Enhanced LSP capabilities
+│   │   ├── diagnostics.lua    # Diagnostic configuration
+│   │   ├── keymaps.lua        # LSP keybindings
+│   │   ├── commands.lua       # LSP management commands
+│   │   ├── utils.lua          # LSP utility functions
 │   │   ├── configs/           # Language-specific configs
-│   │   ├── notifications.lua  # Notification control
-│   │   └── ...
+│   │   └── README.md          # Comprehensive LSP documentation
 │   └── plugins/               # Plugin specifications
 └── selene.toml                # Lua linting configuration
 ```
@@ -43,9 +48,9 @@ A performance-focused [Neovim](https://neovim.io/) configuration showcasing mode
 ### 🧠 Intelligent LSP System
 - **Automatic tool installation** via Mason
 - **Custom linter configurations** (e.g., selene with config file)
-- **Notification control system** (quiet by default)
 - **Modern API usage** (Neovim 0.11+ compatible)
 - **Error handling** with graceful degradation
+- **Modular language configs** - Easy to add new languages
 
 ### 🎨 Modern UI/UX
 - **OneDark theme** with vivid variant
@@ -62,8 +67,8 @@ A performance-focused [Neovim](https://neovim.io/) configuration showcasing mode
 - `:LspShowTools` - Display available tools by type
 - `:LspInstallMissing` - Install missing tools automatically
 - `:LspShowCustomLinters` - View custom linter configurations
-- `:ConfigHealth` - Run configuration health check
-- `:ProfileStartup` - Profile startup performance
+- `:LspShowFiletypeConfig` - Show configuration for specific filetype
+- `:LspClearCache` - Clear loader cache
 
 ### Plugin Management
 - `:Lazy` - Open plugin manager
@@ -128,7 +133,6 @@ nvim
 
 # Check health
 :checkhealth
-:ConfigHealth
 ```
 
 ## 🔧 Key Technologies
@@ -144,4 +148,4 @@ nvim
 
 ## 📝 License
 
-This configuration is provided as-is for educational purposes. Feel free to learn from it, but please don't blindly copy. Build your own config that works for you!
+This configuration is provided as-is for educational purposes. Feel free to learn from it, don't blindly copy. Build your own config that works for you!

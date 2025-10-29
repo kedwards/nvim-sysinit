@@ -88,6 +88,3 @@ lazy.setup({
 		},
 	},
 })
-
--- Install plugins using built in package manger
--- vim.cmd.packadd("nvim.undotree")

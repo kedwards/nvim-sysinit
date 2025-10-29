@@ -359,16 +359,6 @@ function M.apply_custom_linter_configs(lint)
 					-- Create new linter config
 					lint.linters[linter_name] = linter_config
 				end
-
-				-- Debug notification (controlled by notifications system)
-				local notifications = M.lazy_require("lsp.notifications")
-				if notifications then
-					notifications.notify(
-						"lint_warning",
-						"Configured custom linter: " .. linter_name,
-						vim.log.levels.DEBUG
-					)
-				end
 			end
 		end
 	end

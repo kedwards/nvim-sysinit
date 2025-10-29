@@ -1,7 +1,5 @@
 -- Lua Language Configuration
--- https://github.com/luals/lua-language-server
 -- https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#lua_ls
--- Install https://luals.github.io/#neovim-install
 
 return {
 	-- LSP servers for Lua
