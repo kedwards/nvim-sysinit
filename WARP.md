@@ -5,10 +5,11 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 ## Repository Overview
 
 **sysinit** is a high-performance, modular Neovim configuration optimized for development workflow. It features:
-- **~38ms startup time** with ~30 carefully selected plugins
+- **~75ms startup time** with 30+ carefully selected plugins
 - **Modular LSP system** with automatic tool management via Mason
 - **Performance-first architecture** with lazy loading and caching
-- **Built-in health monitoring** and startup profiling
+- **Modern Neovim 0.11+ APIs** throughout the codebase
+- **No tests** - This is a personal configuration, not a distribution
 
 ## Essential Commands
 
@@ -17,11 +18,11 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 # Install/update all plugins
 nvim --headless "+Lazy! sync" +qa
 
-# Run configuration health check
-nvim --headless "+ConfigHealth" +qa
-
 # Profile startup performance
 nvim --startuptime startup.log +qa
+
+# Lint Lua files (requires selene)
+selene lua/
 ```
 
 ### Development Workflow
@@ -37,9 +38,7 @@ nvim --startuptime startup.log +qa
 :LspShowTools           # Display available tools by type
 :Mason                  # Open Mason tool manager
 
-# Health and diagnostics
-:ConfigHealth           # Run configuration health check
-:ProfileStartup         # Profile startup performance  
+# Diagnostics
 :LspInfo               # Show LSP client status
 :checkhealth           # Run all health checks
 
@@ -52,32 +51,63 @@ nvim --startuptime startup.log +qa
 ### Bootstrap Flow
 ```
 init.lua
-├── vim.loader.enable()     # Enable module caching
+├── vim.loader.enable()     # Enable module caching (Neovim 0.11+)
 ├── require("config")       # Load core configuration
+│   ├── Print ASCII art header
+│   ├── setup_mason()       # Initialize Mason paths
+│   ├── options.lua         # Neovim settings
+│   ├── keymaps.lua         # Key mappings
+│   └── autocmds.lua        # Auto commands
 └── require("Lazy")         # Initialize plugin manager
+    └── Import all plugins from lua/plugins/
 ```
+
+### Error Handling Philosophy
+- **Non-blocking startup**: Errors in module loading won't prevent Neovim from starting
+- **Graceful degradation**: Failed modules show notifications but don't crash
+- **Deferred error summary**: Full error report shown after 500ms delay
+- **Module caching**: Failed module loads are retried on next require
 
 ### Core Structure
 ```
 ├── init.lua                    # Main entry point with error handling
 ├── lua/
 │   ├── config/                 # Core configuration modules
-│   │   ├── init.lua           # Config loader with ASCII art
+│   │   ├── init.lua           # Config loader with ASCII art header
 │   │   ├── options.lua        # Neovim settings (performance optimized)
-│   │   ├── keymaps.lua        # Key mappings (table-driven approach)
-│   │   ├── autocmds.lua       # Auto commands
-│   │   └── health.lua         # Configuration health checks
+│   │   ├── keymaps.lua        # Key mappings (helper function approach)
+│   │   ├── autocmds.lua       # Auto commands (grouped by purpose)
+│   │   └── utils.lua          # Path management and Mason setup
 │   ├── lsp/                   # Modular LSP system
+│   │   ├── init.lua           # LSP entry point
 │   │   ├── loader.lua         # Modern LSP loader with caching
 │   │   ├── config.lua         # Global LSP configuration
 │   │   ├── capabilities.lua   # Enhanced LSP capabilities
+│   │   ├── diagnostics.lua    # Diagnostic configuration
 │   │   ├── keymaps.lua        # LSP keybindings
-│   │   ├── notifications.lua  # Notification control system
+│   │   ├── commands.lua       # LSP management commands
+│   │   ├── utils.lua          # LSP utility functions
+│   │   ├── configs/           # Language-specific configurations
 │   │   └── README.md          # Comprehensive LSP documentation
+│   ├── Lazy.lua               # Plugin manager initialization
 │   └── plugins/               # Plugin specifications (lazy-loaded)
 ├── selene.toml                # Lua linting configuration
-└── lazy-lock.json            # Plugin version lockfile
+├── .gitignore                 # Git ignore patterns
+└── lazy-lock.json            # Plugin version lockfile (gitignored)
 ```
+
+## Code Quality
+
+### Linting
+- **selene** - Lua linter configured via `selene.toml`
+- Configuration allows mixed tables, undefined variables (for vim globals)
+- Runs on Lua files via command line: `selene lua/`
+
+### No Testing Framework
+This is a personal configuration without automated tests. Verification is done through:
+- `:checkhealth` - Neovim health checks
+- `:Lazy profile` - Plugin loading analysis
+- Manual testing with `nvim --startuptime`
 
 ## LSP Architecture
 
@@ -119,12 +149,8 @@ return {
 - `:LspNewConfig <name>` - Create new language configuration template
 - `:LspReloadConfigs` - Reload all configurations
 - `:LspShowCustomLinters` - View custom linter configurations with full details
-
-### Notification Control
-By default, all non-error LSP notifications are disabled for performance. Control with:
-- `:LspToggleAllNotifications` - Toggle all non-error notifications
-- `:LspToggleAttachNotifications` - Toggle LSP attach/detach messages
-- `:LspToggleServerNotifications` - Toggle server management messages
+- `:LspShowFiletypeConfig [filetype]` - Show configuration for specific filetype
+- `:LspClearCache` - Clear loader cache
 
 ## Performance Optimizations
 
@@ -137,21 +163,17 @@ This configuration is heavily optimized for startup performance and runtime effi
 - **Large file detection** - Auto-optimization for files >1MB
 
 ### Runtime Optimizations
-- **LSP notification silencing** - Reduces noise and improves performance
 - **Plugin caching** - Enabled in lazy.nvim configuration
 - **Treesitter optimization** - Disabled for large files automatically
 - **Diagnostic debouncing** - Configured for optimal responsiveness
 
 ### Monitoring Performance
 ```bash
-# Profile startup (target: <50ms)
-:ProfileStartup
+# Profile startup (target: <100ms)
+:Lazy profile           # Profile plugin loading
 
-# Plugin load profiling
-:Lazy profile
-
-# Monitor health
-:ConfigHealth
+# Check health
+:checkhealth            # Run Neovim health checks
 ```
 
 ## Plugin Management
@@ -165,9 +187,14 @@ This configuration is heavily optimized for startup performance and runtime effi
 ### Plugin Categories
 - **Core**: lazy.nvim, blink.cmp (completion), nvim-treesitter
 - **LSP**: nvim-lspconfig, mason.nvim, conform.nvim, nvim-lint
-- **UI/UX**: onedarkpro (theme), lualine (statusline), noice (UI), trouble (diagnostics)
-- **Navigation**: mini_files (file explorer), which-key (keybind helper)
-- **Utilities**: copilot (AI assistance), snacks (various utilities)
+- **AI**: copilot.lua, copilot-lsp (NES), CopilotChat, sidekick (in ai.lua)
+- **UI/UX**: onedarkpro (theme), lualine (statusline), noice (UI), trouble (diagnostics), vim-illuminate
+- **Navigation**: telescope, harpoon, neovim-project
+- **Git**: gitsigns, diffview (in git.lua and diffview.lua)
+- **Editing**: better-escape, grug-far (find/replace), refactoring, suda (sudo), undo-tree
+- **Utilities**: which-key, toggleterm, nvim-dap, nvim-dbee, snacks, nvim-bqf, showkeys, render-markdown
+
+**Plugin file organization**: Each plugin spec is in a separate file under `lua/plugins/`, imported automatically by lazy.nvim.
 
 ### Adding New Plugins
 Create new file in `lua/plugins/` following this pattern:
@@ -180,21 +207,13 @@ return {
 }
 ```
 
-## Testing and Validation
+## Performance Benchmarks
 
-### Health Checks
-The configuration includes comprehensive health monitoring:
-- **Configuration loading validation** - Ensures all modules load correctly
-- **Plugin status verification** - Checks essential plugins are functional  
-- **External tool availability** - Verifies rg, fd, git are available
-- **LSP configuration counting** - Reports number of language configs
-- **Startup performance tracking** - Monitors and reports timing
-
-### Performance Benchmarks
-- **Target startup time**: <50ms (excellent), <100ms (good)
-- **Plugin count**: ~30 (carefully curated)
+- **Current startup time**: ~75ms
+- **Target startup time**: <100ms (good), <50ms (excellent)
+- **Plugin count**: 30 carefully curated plugins
 - **Memory usage**: Optimized with lazy loading
-- **LSP languages**: 4+ pre-configured (Lua, Python, Go, TypeScript)
+- **LSP languages**: Modular system (Lua, Python, Go, TypeScript configured by default)
 
 ## Troubleshooting
 
@@ -216,7 +235,6 @@ The configuration includes comprehensive health monitoring:
 :checkhealth            # Run comprehensive health check
 
 # Configuration errors  
-:ConfigHealth           # Run configuration health check
 :messages               # View error messages
 ```
 
@@ -228,9 +246,9 @@ vim.lsp.set_log_level("debug")  -- Add to any config file temporarily
 
 ### Performance Debugging
 If startup becomes slow:
-1. Run `:ProfileStartup` to identify bottlenecks
+1. Profile with `:Lazy profile` to identify bottlenecks
 2. Check plugin lazy loading configuration
-3. Verify large file detection is working
+3. Verify large file detection is working (>2MB files)
 4. Review disabled providers in options.lua
 
 ## Key Features Unique to This Config
@@ -238,10 +256,10 @@ If startup becomes slow:
 ### ASCII Art Startup Header
 The configuration displays a custom ASCII art header defined in `lua/config/init.lua`.
 
-### Table-Driven Keymaps
-Keymaps use a structured table approach in `lua/config/keymaps.lua` for maintainability:
+### Helper Function Keymaps
+Keymaps use a helper function approach in `lua/config/keymaps.lua` for maintainability:
 ```lua
-{ "n", "<leader>x", ":command", "Description" }
+map("n", "<leader>x", ":command", "Description")
 ```
 
 ### Custom Linter Configuration
@@ -250,26 +268,5 @@ Supports complex linter setups like selene with custom config files via `lint_co
 ### Window Navigation Integration
 Includes zellij-nav plugin for seamless terminal multiplexer integration.
 
-### Dynamic Which-Key Group Registration
-Plugins can dynamically register their which-key groups using the `config.which_key_groups` registry:
-
-```lua
-return {
-  "plugin/name",
-  init = function()
-    -- Register which-key group early (before which-key loads)
-    require("config.which_key_groups").register("plugin-name", {
-      {
-        mode = { "n", "v" },
-        { "<leader>x", group = "Plugin Name" },
-      },
-    })
-  end,
-  -- ... rest of plugin config
-}
-```
-
-**Critical**: Use the `init` function (not `config`) to ensure groups are registered before which-key is loaded. This solves timing issues where groups defined in `config` functions aren't available when which-key displays.
-
-### Performance Monitoring Built-in
-Includes startup profiling, health checks, and performance monitoring as first-class features.
+### Performance Monitoring
+Includes lazy.nvim profiling and Neovim's built-in health checks for diagnostics.

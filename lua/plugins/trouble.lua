@@ -1,14 +1,5 @@
 return {
 	"folke/trouble.nvim",
-	init = function()
-		-- Register which-key group early so it's available when which-key loads
-		require("config.which_key_groups").register("trouble", {
-			{
-				mode = { "n", "v" },
-				{ "<leader>x", group = "Trouble" },
-			},
-		})
-	end,
 	opts = {
 		modes = {
 			preview_float = {
@@ -26,40 +17,42 @@ return {
 			},
 		},
 	},
-	-- cmd = "Trouble",
 	keys = {
 		{
 			"<leader>xx",
 			"<cmd>Trouble diagnostics toggle<cr>",
-			desc = "Diagnostics (Trouble)",
+			desc = "Diagnostics",
 		},
 		{
 			"<leader>xX",
 			"<cmd>Trouble diagnostics toggle filter.buf=0<cr>",
-			desc = "Buffer Diagnostics (Trouble)",
+			desc = "Buffer Diagnostics",
 		},
 		{
-			"<leader>cs",
+			"<leader>xs",
 			"<cmd>Trouble symbols toggle focus=false<cr>",
-			desc = "Symbols (Trouble)",
+			desc = "Symbols",
 		},
 		{
-			"<leader>cl",
+			"<leader>xl",
 			"<cmd>Trouble lsp toggle focus=false win.position=right<cr>",
-			desc = "LSP Definitions / references / ... (Trouble)",
+			desc = "LSP Definitions / references / ...",
 		},
 		{
 			"<leader>xL",
 			"<cmd>Trouble loclist toggle<cr>",
-			desc = "Location List (Trouble)",
+			desc = "Location List",
 		},
 		{
 			"<leader>xQ",
 			"<cmd>Trouble qflist toggle<cr>",
-			desc = "Quickfix List (Trouble)",
+			desc = "Quickfix List",
 		},
 	},
 	config = function(opts)
+		require("which-key").add({
+			{ "<leader>x", group = "Trouble" },
+		})
 		require("trouble").setup(opts)
 	end,
 }

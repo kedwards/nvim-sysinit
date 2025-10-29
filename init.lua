@@ -1,7 +1,7 @@
 -- Improve startup time by skipping some checks
 vim.loader.enable()
 
--- Load core configuration modules with better error handling
+-- Load core configuration and plugin loader
 local modules = { "config", "Lazy" }
 local load_errors = {}
 

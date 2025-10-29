@@ -1,126 +1,132 @@
 return function()
-	local opt = vim.opt
-	local g = vim.g
+	local opt, g, fn = vim.opt, vim.g, vim.fn
 
 	-- LEADER KEYS
-	g.mapleader = " " -- Space as main leader
-	g.maplocalleader = ";" -- Semicolon as local leader
+	g.mapleader = " "
+	g.maplocalleader = ";"
 
 	-- DISABLE PROVIDERS
-	-- Disable unused providers for faster startup
-	g.loaded_perl_provider = 0
-	g.loaded_ruby_provider = 0
-	g.loaded_node_provider = 0
-	g.loaded_python3_provider = 0
+	for _, provider in ipairs({ "perl", "ruby", "node", "python3" }) do
+		local var = "loaded_" .. provider .. "_provider"
+		if g[var] == nil then
+			g[var] = 0
+		end
+	end
+
+	-- Disable netrw plugin
+	g.loaded_netrw = 1
+	g.loaded_netrwPlugin = 1
 
 	-- FILE & BACKUP SETTINGS
-	opt.backup = false -- Don't create backup files
-	opt.writebackup = false -- Don't create backup before overwriting
-	opt.swapfile = false -- Don't create swap files
-	opt.undofile = true -- Enable persistent undo
-	opt.autoread = true -- Auto-read file when changed outside Neovim
-	opt.autowrite = true -- Auto-save before commands like :next
+	opt.backup = false
+	opt.writebackup = false
+	opt.swapfile = false
+	opt.directory = ""
+	opt.undofile = true
+	opt.autoread = true
+	opt.autowrite = true
 
 	-- Setup undo directory
-	local undodir = vim.fn.stdpath("state") .. "/undo"
-	vim.fn.mkdir(undodir, "p")
-	opt.undodir = undodir
+	local undo_dir = vim.fn.stdpath("state") .. "/undo"
+	if fn.isdirectory(undo_dir) == 0 then
+		pcall(fn.mkdir, undo_dir, "p")
+	end
+	opt.undodir = undo_dir
 
 	-- GENERAL SETTINGS
-	opt.updatetime = 250 -- Faster completion (default 4000ms)
-	opt.timeoutlen = 300 -- Time to wait for mapped sequence
-	opt.mouse = "a" -- Enable mouse in all modes
-	opt.confirm = true -- Confirm to save changes before closing
-	opt.history = 1000 -- Command history size
-	opt.hidden = true -- Allow hidden buffers
+	opt.updatetime = 250
+	opt.timeoutlen = 400
+	opt.mouse = "a"
+	opt.confirm = true
+	opt.history = 1000
+	opt.hidden = true
 
-	-- Wild menu settings
-	opt.wildmode = { "list", "longest" } -- Command completion mode
-	opt.wildignorecase = true -- Ignore case in command completion
-	opt.wildmenu = true -- Enhanced command completion
+	opt.wildmode = { "list", "longest" }
+	opt.wildignorecase = true
+	opt.wildmenu = true
 
 	-- UI & DISPLAY SETTINGS
 	-- Command line
-	opt.cmdheight = 0 -- Hide command line when not used
-	opt.showcmd = true -- Show command in status line
-	opt.showmode = false -- Don't show mode (using statusline)
-	opt.laststatus = 3 -- Global statusline
+	opt.cmdheight = 1
+	opt.showcmd = true
+	opt.showmode = false
+	opt.laststatus = 3
 
 	-- Cursor and lines
-	opt.cursorline = true -- Highlight current line
-	opt.guicursor = "n-v-i-c:block-Cursor" -- Block cursor in all modes
-	opt.number = true -- Show line numbers
-	opt.relativenumber = true -- Show relative line numbers
+	opt.showtabline = 1
+	opt.cursorline = true
+	opt.guicursor = "n-v-i-c:block-Cursor"
+	opt.number = true
+	opt.relativenumber = true
 
 	-- Scrolling and viewport
-	opt.scrolloff = 8 -- Min lines above/below cursor
-	opt.sidescrolloff = 8 -- Min columns left/right of cursor
-	opt.wrap = false -- Don't wrap lines
-	opt.linebreak = true -- Wrap at word boundaries (when wrap is on)
+	opt.scrolloff = 8
+	opt.sidescrolloff = 8
+	opt.wrap = false
 
 	-- Columns and signs
-	opt.signcolumn = "yes:2" -- Always show 2-width sign column
-	-- opt.colorcolumn = "80" -- Show column guide at 80 chars
-	opt.fillchars = { eob = " " } -- Hide ~ on empty lines
+	opt.signcolumn = "yes:2"
+	opt.fillchars = { eob = " " }
 
 	-- Popup menu
-	opt.pumheight = 15 -- Max items in popup menu
-	opt.pumblend = 10 -- Popup transparency
+	opt.pumheight = 15
+	opt.pumblend = 10
 
 	-- INDENTATION SETTINGS
-	opt.expandtab = true -- Use spaces instead of tabs
-	opt.shiftwidth = 2 -- Size of indent
-	opt.tabstop = 2 -- Size of tab character
-	opt.softtabstop = 2 -- Size of tab in insert mode
-	opt.smartindent = true -- Smart auto-indenting
-	opt.smarttab = true -- Smart tab behavior
-	opt.breakindent = true -- Indent wrapped lines
-	opt.shiftround = true -- Round indent to multiple of shiftwidth
+	opt.expandtab = true
+	opt.shiftwidth = 2
+	opt.tabstop = 2
+	opt.softtabstop = 2
+	opt.smartindent = true
+	opt.breakindent = true
+	opt.shiftround = true
 
-	-- FOLDING SETTINGS
-	opt.foldenable = true -- Enable folding
-	opt.foldlevel = 99 -- Start with all folds open
-	opt.foldlevelstart = 99 -- Start with all folds open
-	opt.foldmethod = "expr" -- Use expression for folding
-	opt.foldexpr = "nvim_treesitter#foldexpr()" -- Use treesitter for folding
-	opt.foldnestmax = 10 -- Max nested folds
-	opt.foldcolumn = "1" -- Show fold column
+	opt.foldenable = true
+	opt.foldlevel = 99
+	opt.foldlevelstart = 99
+	opt.foldnestmax = 10
+	opt.foldcolumn = "1"
+	-- Use Treesitter folds if available
+	if pcall(require, "nvim-treesitter") then
+		opt.foldmethod = "expr"
+		opt.foldexpr = "nvim_treesitter#foldexpr()"
+	else
+		opt.foldmethod = "manual"
+	end
 
 	-- SEARCH SETTINGS
-	opt.ignorecase = true -- Ignore case in search
-	opt.smartcase = true -- Case-sensitive if uppercase present
-	opt.infercase = true -- Infer case in keyword completion
-	opt.inccommand = "split" -- Show live preview of substitution
-	opt.hlsearch = true -- Highlight search results
-	opt.incsearch = true -- Show search matches as you type
+	opt.ignorecase = true
+	opt.smartcase = true
+	opt.inccommand = "split"
+	opt.hlsearch = true
+	opt.incsearch = true
 
 	-- COMPLETION SETTINGS
 	opt.completeopt = { "menu", "menuone", "noselect", "fuzzy" }
 	opt.complete = { ".", "w", "b", "kspell" }
-	opt.shortmess:append("c") -- Don't show completion messages
-	opt.shortmess = "filnxtToOFWIcC" -- Abbreviate messages
+	opt.shortmess:append("filnxtToOFWIcC")
 
 	-- EDITING SETTINGS
-	opt.formatoptions = "jcroqlnt" -- Format options
-	opt.virtualedit = "block" -- Allow cursor past end of line in visual block
-	opt.spelloptions = "camel" -- Spell check camelCase words
-	opt.joinspaces = false -- Don't insert two spaces after punctuation
-	opt.iskeyword:append("-") -- Treat dash as part of word
+	opt.formatoptions = "jcroqlnt"
+	opt.joinspaces = false
+	opt.iskeyword:append("-")
 
 	-- BUFFER SETTINGS
-	opt.switchbuf = "usetab,uselast" -- Switch buffer behavior
+	opt.switchbuf = "usetab,uselast"
 
 	-- EXTERNAL TOOLS
 	-- Setup ripgrep if available
-	if vim.fn.executable("rg") == 1 then
-		opt.grepprg = "rg --vimgrep --no-heading --smart-case --hidden --follow"
+	if fn.executable("rg") == 1 then
+		opt.grepprg = "rg --vimgrep --no-heading --smart-case --hidden --follow --glob '!.git/*'"
 		opt.grepformat = "%f:%l:%c:%m"
 	end
 
 	-- CLIPBOARD SETTINGS
 	-- Configure clipboard based on environment
 	local function setup_clipboard()
-		if vim.fn.has("wsl") == 1 then
+		local has_wsl = os.getenv("WSL_DISTRO_NAME") or fn.has("wsl") == 1
+
+		if has_wsl then
 			-- WSL clipboard integration
 			g.clipboard = {
 				name = "WslClipboard",
@@ -132,7 +138,8 @@ return function()
 					["+"] = [[/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -Command [Console]::Out.Write($(Get-Clipboard -Raw).ToString().Replace("`r", ""))]],
 					["*"] = [[/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -Command [Console]::Out.Write($(Get-Clipboard -Raw).ToString().Replace("`r", ""))]],
 				},
-				cache_enabled = 0,
+				-- Improve performance
+				cache_enabled = 1,
 			}
 		elseif vim.fn.has("macunix") == 1 then
 			-- macOS clipboard

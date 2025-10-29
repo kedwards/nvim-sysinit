@@ -1,0 +1,46 @@
+# Neovim runtime files
+*.swp
+*.swo
+*.swn
+*~
+.DS_Store
+
+# Lazy.nvim plugin manager
+lazy-lock.json
+
+# Mason installed tools and packages
+mason/
+
+# Temporary files and logs
+*.log
+debug.log
+*.tmp
+
+# Session files
+*.vim
+Session.vim
+.session
+
+# Undo history
+undodir/
+*.un~
+
+# LSP and linting caches
+.luarc.json
+.stylua.toml
+.selene/
+
+# Environment and local config
+.env
+.env.*
+local.lua
+*local.lua
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-*
+
+# OS-specific
+Thumbs.db
+Desktop.ini

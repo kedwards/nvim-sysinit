@@ -11,7 +11,6 @@ This is a comprehensive, performant LSP loader system for Neovim 0.11+ that auto
 - **`capabilities.lua`** - Enhanced LSP capabilities
 - **`keymaps.lua`** - LSP keymaps and server management commands
 - **`diagnostics.lua`** - Diagnostic signs and configuration
-- **`notifications.lua`** - Notification control system
 - **`commands.lua`** - Management commands for the loader
 - **`configs/`** - Language-specific configuration files
 
@@ -65,7 +64,7 @@ return {
 ### ✨ **Automatic Tool Management**
 
 - Reads all config files from `lua/lsp/configs/`
-- Extracts LSP servers, formatters, and linters
+- Extracts LSP servers, formatters, linters, and debuggers
 - Automatically installs missing tools via Mason
 - Caches results for performance
 
@@ -94,87 +93,33 @@ return {
 - `:LspShowCustomLinters` - Show detailed custom linter configurations
 - `:LspClearCache` - Clear loader cache
 
-### 🔕 **Notification Control System**
-
-A comprehensive notification framework to reduce noisy LSP messages.
-
-#### Default Behavior
-
-By default, **all non-error LSP notifications are disabled**, including:
-
-- "LSP attached/detached" messages
-- "Configured LSP servers" messages
-- "Enabled/Disabled LSP server" messages
-- "Started/Stopped/Restarting LSP server" messages
-- "Loaded X language configurations" messages
-- Formatting warnings
-
-**Error messages are always shown** for debugging purposes.
-
-#### Management Commands
-
-- `:LspToggleAttachNotifications` - Toggle LSP attach/detach messages
-- `:LspToggleServerNotifications` - Toggle server management messages
-- `:LspToggleConfigMessages` - Toggle config loaded messages
-- `:LspToggleAllNotifications` - Toggle all non-error notifications
-
-#### Programmatic Control
-
-In your config, you can call:
-
-```lua
--- Enable all notifications (for debugging)
-require("lsp.notifications").enable_all()
-
--- Disable all non-error notifications (default)
-require("lsp.notifications").disable_all()
-
--- Custom configuration
-require("lsp.notifications").configure({
-  server_start = true,      -- Show "Started LSP server"
-  server_enable = false,    -- Hide "Enabled LSP server"
-  errors_only = false,      -- Show all levels (not just errors)
-})
-```
-
 ## Usage
 
 ### Basic Setup
 
 The system auto-loads when you require the LSP module. No manual configuration needed:
 
-_basic_
-
 ```lua
 require("lsp") -- Automatically loads everything
 ```
 
-_full featured_
+### Plugin Manager Integration
+
+LazyNvim example:
 
 ```lua
-require("lsp") -- Automatically loads everything
 return {
-	"neovim/nvim-lspconfig",
-	event = { "BufReadPre", "BufNewFile" },
-	dependencies = {
-		{
-			"williamboman/mason.nvim",
-			build = ":MasonUpdate",
-			lazy = false,
-		},
-		{
-			"stevearc/conform.nvim",
-			lazy = true,
-		},
-		{
-			"mfussenegger/nvim-lint",
-			lazy = true,
-		},
-	},
-	config = function()
-		-- The LSP module handles everything including dependency configuration
-		require("lsp")
-	end,
+  "neovim/nvim-lspconfig",
+  event = { "BufReadPre", "BufNewFile" },
+  dependencies = {
+    "stevearc/conform.nvim",
+    "mfussenegger/nvim-lint",
+    "mason-org/mason.nvim",
+  },
+  config = function()
+    -- The LSP module handles everything including dependency configuration
+    require("lsp")
+  end,
 }
 ```
 
@@ -427,16 +372,4 @@ loader.setup_linting()
 :LspInfo                    # Check LSP status
 :LspShowFiletypeConfig     # Check config for current file
 :checkhealth lsp           # Run health check
-```
-
-### Notifications too noisy/quiet?
-
-```bash
-# Turn on all notifications for debugging
-:LspToggleAllNotifications
-
-# Toggle specific notification types
-:LspToggleAttachNotifications
-:LspToggleServerNotifications
-:LspToggleConfigMessages
 ```

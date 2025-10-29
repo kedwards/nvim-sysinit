@@ -10,6 +10,9 @@ unused_variable = "warn"
 # Allow undefined variables since vim globals are dynamic
 undefined_variable = "allow"
 
+# Allow unscoped variables since vim is a global in Neovim
+unscoped_variables = "allow"
+
 # Warn about empty if statements
 empty_if = "warn"
 

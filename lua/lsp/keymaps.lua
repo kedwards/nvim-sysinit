@@ -1,10 +1,4 @@
-local M = {
-	-- Configuration options
-	config = {
-		show_attach_notifications = false, -- Default: disabled
-		show_server_notifications = false, -- Default: disabled (start/stop/restart)
-	},
-}
+local M = {}
 
 --- Helper function to send notifications based on configuration
 local function lsp_notify(message, level, notification_type, opts)
@@ -28,13 +22,7 @@ local function lsp_notify(message, level, notification_type, opts)
 	vim.notify(message, level, opts)
 end
 
---- Configure LSP keymaps options
---- @param opts table Configuration options
-function M.configure(opts)
-	M.config = vim.tbl_deep_extend("force", M.config, opts or {})
-end
-
---- Helper function to create keymap with consistent options
+--- Helper function to create keymap
 --- @param mode string|table Key modes
 --- @param lhs string Key combination
 --- @param rhs string|function Key action
@@ -51,74 +39,7 @@ local function map(mode, lhs, rhs, desc, bufnr, additional_opts)
 end
 
 --- Default keymap configuration (can be overridden)
-M.keymaps = {
-	-- Navigation
-	{ "n", "gd", vim.lsp.buf.definition, "Go to definition" },
-	{ "n", "gD", vim.lsp.buf.declaration, "Go to declaration" },
-	{ "n", "gi", vim.lsp.buf.implementation, "Go to implementation" },
-	{ "n", "gr", vim.lsp.buf.references, "Show references" },
-	{ "n", "gt", vim.lsp.buf.type_definition, "Go to type definition" },
-
-	-- Documentation
-	{ "n", "K", vim.lsp.buf.hover, "Show hover documentation" },
-	{ "n", "<C-k>", vim.lsp.buf.signature_help, "Show signature help" },
-
-	-- Code actions and refactoring
-	{ { "n", "v" }, "<leader>ca", vim.lsp.buf.code_action, "Code actions" },
-	{ "n", "<leader>rn", vim.lsp.buf.rename, "Rename symbol" },
-
-	-- Diagnostics
-	{ "n", "[d", vim.diagnostic.goto_prev, "Go to previous diagnostic" },
-	{ "n", "]d", vim.diagnostic.goto_next, "Go to next diagnostic" },
-	{ "n", "<leader>e", vim.diagnostic.open_float, "Show line diagnostics" },
-
-	-- Workspace management
-	{ "n", "<leader>wa", vim.lsp.buf.add_workspace_folder, "Add workspace folder" },
-	{ "n", "<leader>wr", vim.lsp.buf.remove_workspace_folder, "Remove workspace folder" },
-	{
-		"n",
-		"<leader>wl",
-		function()
-			print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
-		end,
-		"List workspace folders",
-	},
-
-	-- Document symbols
-	{ "n", "<leader>ds", vim.lsp.buf.document_symbol, "Document symbols" },
-	{ "n", "<leader>ws", vim.lsp.buf.workspace_symbol, "Workspace symbols" },
-}
-
---- Configure keymap overrides
---- @param overrides table Table of keymap overrides
-function M.configure_keymaps(overrides)
-	-- Allow users to disable keymaps by setting them to false
-	-- Or override individual keymaps completely
-	for key, override in pairs(overrides or {}) do
-		if override == false then
-			-- Remove keymap by setting it to false
-			for i, keymap in ipairs(M.keymaps) do
-				if keymap[2] == key then -- match by key combination
-					table.remove(M.keymaps, i)
-					break
-				end
-			end
-		elseif type(override) == "table" and #override >= 4 then
-			-- Replace existing keymap or add new one
-			local found = false
-			for i, keymap in ipairs(M.keymaps) do
-				if keymap[2] == key then -- match by key combination
-					M.keymaps[i] = override
-					found = true
-					break
-				end
-			end
-			if not found then
-				table.insert(M.keymaps, override)
-			end
-		end
-	end
-end
+M.keymaps = {}
 
 --- Setup LSP keymaps for a buffer
 --- @param client vim.lsp.Client The LSP client
@@ -132,7 +53,7 @@ function M.setup_buffer_keymaps(client, bufnr)
 
 	-- Setup formatting keymaps (conditional on server capabilities)
 	local function setup_formatting_keymap(mode, method, desc)
-		if not client or not client.supports_method(method) then
+		if not client or not client:supports_method(method) then
 			return
 		end
 
@@ -143,12 +64,6 @@ function M.setup_buffer_keymaps(client, bufnr)
 			end, clients)
 
 			if #formatting_clients == 0 then
-				lsp_notify(
-					string.format("No LSP client supports %s", method),
-					vim.log.levels.WARN,
-					"server",
-					{ title = "LSP" }
-				)
 				return
 			end
 
@@ -166,236 +81,75 @@ function M.setup_buffer_keymaps(client, bufnr)
 	setup_formatting_keymap("n", "textDocument/formatting", "Format document")
 	setup_formatting_keymap("v", "textDocument/rangeFormatting", "Format range")
 
-	-- Setup inlay hints (conditional on server capabilities)
-	if client and client.supports_method("textDocument/inlayHint") then
-		map("n", "<leader>ih", function()
-			local current_state = vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
-			vim.lsp.inlay_hint.enable(not current_state, { bufnr = bufnr })
-		end, "Toggle inlay hints", bufnr)
+	-- vim.lsp.document_color.enable(true, bufnr)
+	if client:supports_method("textDocument/documentColor") then
+		map({ "n", "x" }, "grc", function()
+			vim.lsp.document_color.color_presentation()
+		end, "Colour document via LSP", bufnr)
+	end
+
+	if client:supports_method("textDocument/definition") then
+		map("n", "gd", function()
+			vim.lsp.buf.definition()
+		end, "Go to definition", bufnr)
+		map("n", "gD", function()
+			vim.lsp.buf.declaration()
+		end, "Peek definition", bufnr)
+	end
+
+	if client:supports_method("textDocument/documentHighlight") then
+		local under_cursor_highlights_group = vim.api.nvim_create_augroup("cursor_highlights", { clear = false })
+		vim.api.nvim_create_autocmd({ "CursorHold", "InsertLeave" }, {
+			group = under_cursor_highlights_group,
+			desc = "Highlight references under the cursor",
+			buffer = bufnr,
+			callback = vim.lsp.buf.document_highlight,
+		})
+		vim.api.nvim_create_autocmd({ "CursorMoved", "InsertEnter", "BufLeave" }, {
+			group = under_cursor_highlights_group,
+			desc = "Clear highlight references",
+			buffer = bufnr,
+			callback = vim.lsp.buf.clear_references,
+		})
+	end
+
+	if client:supports_method("textDocument/inlayHint") then
+		local inlay_hints_group = vim.api.nvim_create_augroup("toggle_inlay_hints", { clear = false })
+
+		if vim.g.inlay_hints then
+			-- Initial inlay hint display.
+			-- Idk why but without the delay inlay hints aren't displayed at the very start.
+			vim.defer_fn(function()
+				local mode = vim.api.nvim_get_mode().mode
+				vim.lsp.inlay_hint.enable(mode == "n" or mode == "v", { bufnr = bufnr })
+			end, 500)
+		end
+
+		vim.api.nvim_create_autocmd("InsertEnter", {
+			group = inlay_hints_group,
+			desc = "Enable inlay hints",
+			buffer = bufnr,
+			callback = function()
+				if vim.g.inlay_hints then
+					vim.lsp.inlay_hint.enable(false, { bufnr = bufnr })
+				end
+			end,
+		})
+
+		vim.api.nvim_create_autocmd("InsertLeave", {
+			group = inlay_hints_group,
+			desc = "Disable inlay hints",
+			buffer = bufnr,
+			callback = function()
+				if vim.g.inlay_hints then
+					vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+				end
+			end,
+		})
 	end
 end
 
 function M.setup_user_commands()
-	-- LSP server management commands
-	vim.api.nvim_create_user_command("LspInfo", function()
-		vim.cmd("checkhealth lsp")
-	end, {
-		desc = "Show LSP information",
-	})
-
-	vim.api.nvim_create_user_command("LspStart", function(opts)
-		local server_name = opts.args
-		if server_name == "" then
-			lsp_notify("Please specify a server name", vim.log.levels.ERROR, "server", { title = "LSP" })
-			return
-		end
-
-		local config = require("lsp.config")
-		if config.enable_server(server_name) then
-			lsp_notify(
-				string.format("Started LSP server: %s", server_name),
-				vim.log.levels.INFO,
-				"server",
-				{ title = "LSP" }
-			)
-		else
-			lsp_notify(
-				string.format("Failed to start LSP server: %s", server_name),
-				vim.log.levels.ERROR,
-				"server",
-				{ title = "LSP" }
-			)
-		end
-	end, {
-		desc = "Start an LSP server",
-		nargs = 1,
-		complete = function()
-			-- Return list of available servers (common ones)
-			return {
-				"lua_ls",
-				"pyright",
-				"ts_ls",
-				"gopls",
-				"rust_analyzer",
-				"html",
-				"cssls",
-				"bashls",
-				"dockerls",
-				"jsonls",
-			}
-		end,
-	})
-
-	vim.api.nvim_create_user_command("LspStop", function(opts)
-		local server_name = opts.args
-		if server_name == "" then
-			lsp_notify("Please specify a server name", vim.log.levels.ERROR, "server", { title = "LSP" })
-			return
-		end
-
-		local clients = vim.lsp.get_clients({ name = server_name })
-		if #clients == 0 then
-			lsp_notify(
-				string.format("No running LSP server found: %s", server_name),
-				vim.log.levels.WARN,
-				"server",
-				{ title = "LSP" }
-			)
-			return
-		end
-
-		for _, client in ipairs(clients) do
-			client.stop()
-		end
-		lsp_notify(
-			string.format("Stopped LSP server: %s", server_name),
-			vim.log.levels.INFO,
-			"server",
-			{ title = "LSP" }
-		)
-	end, {
-		desc = "Stop an LSP server",
-		nargs = 1,
-		complete = function()
-			-- Return list of running servers
-			local servers = {}
-			for _, client in ipairs(vim.lsp.get_clients()) do
-				table.insert(servers, client.name)
-			end
-			return servers
-		end,
-	})
-
-	vim.api.nvim_create_user_command("LspRestart", function(opts)
-		local server_name = opts.args
-		if server_name == "" then
-			-- Restart all servers for current buffer
-			local clients = vim.lsp.get_clients({ bufnr = 0 })
-			if #clients == 0 then
-				lsp_notify(
-					"No LSP clients attached to current buffer",
-					vim.log.levels.WARN,
-					"server",
-					{ title = "LSP" }
-				)
-				return
-			end
-
-			for _, client in ipairs(clients) do
-				local name = client.name
-				client.stop()
-				vim.defer_fn(function()
-					vim.cmd(string.format("LspStart %s", name))
-				end, 1000)
-			end
-			lsp_notify(
-				"Restarting all LSP servers for current buffer",
-				vim.log.levels.INFO,
-				"server",
-				{ title = "LSP" }
-			)
-		else
-			-- Restart specific server
-			vim.cmd(string.format("LspStop %s", server_name))
-			vim.defer_fn(function()
-				vim.cmd(string.format("LspStart %s", server_name))
-			end, 1000)
-			lsp_notify(
-				string.format("Restarting LSP server: %s", server_name),
-				vim.log.levels.INFO,
-				"server",
-				{ title = "LSP" }
-			)
-		end
-	end, {
-		desc = "Restart LSP server(s)",
-		nargs = "?",
-		complete = function()
-			-- Return list of running servers
-			local servers = {}
-			for _, client in ipairs(vim.lsp.get_clients()) do
-				table.insert(servers, client.name)
-			end
-			return servers
-		end,
-	})
-
-	-- Diagnostic commands
-	vim.api.nvim_create_user_command("LspDiagnostics", function()
-		vim.diagnostic.setqflist()
-	end, {
-		desc = "Show all diagnostics in quickfix",
-	})
-
-	vim.api.nvim_create_user_command("LspDiagnosticsBuffer", function()
-		vim.diagnostic.setloclist()
-	end, {
-		desc = "Show buffer diagnostics in location list",
-	})
-
-	-- Toggle LSP attach notifications
-	vim.api.nvim_create_user_command("LspToggleAttachNotifications", function()
-		M.config.show_attach_notifications = not M.config.show_attach_notifications
-		local status = M.config.show_attach_notifications and "enabled" or "disabled"
-		vim.notify(string.format("LSP attach/detach notifications %s", status), vim.log.levels.INFO, { title = "LSP" })
-	end, {
-		desc = "Toggle LSP attach/detach notifications",
-	})
-
-	-- Toggle LSP server notifications
-	vim.api.nvim_create_user_command("LspToggleServerNotifications", function()
-		M.config.show_server_notifications = not M.config.show_server_notifications
-		local status = M.config.show_server_notifications and "enabled" or "disabled"
-		vim.notify(
-			string.format("LSP server management notifications %s", status),
-			vim.log.levels.INFO,
-			{ title = "LSP" }
-		)
-	end, {
-		desc = "Toggle LSP server management notifications",
-	})
-
-	-- Toggle config loaded messages
-	vim.api.nvim_create_user_command("LspToggleConfigMessages", function()
-		local notifications = require("lsp.notifications")
-		local current_state = notifications.config.show_config_loaded_messages
-		notifications.configure({
-			show_config_loaded_messages = not current_state,
-		})
-		local status = (not current_state) and "enabled" or "disabled"
-		vim.notify(string.format("LSP config loaded messages %s", status), vim.log.levels.INFO, { title = "LSP" })
-	end, {
-		desc = "Toggle LSP config loaded messages",
-	})
-
-	-- Toggle all non-error LSP notifications
-	vim.api.nvim_create_user_command("LspToggleAllNotifications", function()
-		local new_state = not (M.config.show_attach_notifications or M.config.show_server_notifications)
-		M.config.show_attach_notifications = new_state
-		M.config.show_server_notifications = new_state
-
-		-- Also toggle config notifications
-		local lsp_config = require("lsp.config")
-		lsp_config.configure_notifications({
-			errors_only = not new_state,
-		})
-
-		-- Also toggle config loaded messages
-		local notifications = require("lsp.notifications")
-		notifications.configure({
-			show_config_loaded_messages = new_state,
-		})
-
-		local status = new_state and "enabled" or "disabled"
-		vim.notify(
-			string.format("All LSP notifications %s (errors always shown)", status),
-			vim.log.levels.INFO,
-			{ title = "LSP" }
-		)
-	end, {
-		desc = "Toggle all LSP notifications (except errors)",
-	})
-
 	-- Format command
 	vim.api.nvim_create_user_command("LspFormat", function(opts)
 		local bufnr = vim.api.nvim_get_current_buf()
@@ -459,6 +213,39 @@ function M.setup_event_handlers()
 				"attach",
 				{ title = "LSP" }
 			)
+		end,
+	})
+
+	-- Set up LSP servers.
+	vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile" }, {
+		once = true,
+		callback = function()
+			local server_configs = vim.iter(vim.api.nvim_get_runtime_file("lsp/*.lua", true))
+				:map(function(file)
+					return vim.fn.fnamemodify(file, ":t:r")
+				end)
+				:totable()
+
+			-- Read all .lua files from config directory
+			local all_files = vim.fn.readdir(vim.fn.stdpath("config") .. "/lua/lsp/configs") or {}
+			local files = {}
+			for _, file in ipairs(all_files) do
+				if file:match("%.lua$") then
+					if not vim.tbl_contains(files, file) then
+						table.insert(files, file)
+					end
+				end
+			end
+
+			for _, file in ipairs(files or {}) do
+				local name = file:gsub("%.lua$", "")
+				if not vim.tbl_contains(server_configs, name) then
+					table.insert(server_configs, name)
+				end
+			end
+
+			vim.notify("Setting up LSP servers... " .. vim.inspect(server_configs), vim.log.levels.INFO)
+			vim.lsp.enable(server_configs)
 		end,
 	})
 end
