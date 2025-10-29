@@ -283,20 +283,6 @@ function M.setup()
 		nargs = 1,
 	})
 
-	-- Configuration health check
-	vim.api.nvim_create_user_command("ConfigHealth", function()
-		require("config.health").check()
-	end, {
-		desc = "Check configuration health",
-	})
-
-	-- Profile startup performance
-	vim.api.nvim_create_user_command("ProfileStartup", function()
-		require("config.health").profile_startup()
-	end, {
-		desc = "Profile startup performance",
-	})
-
 	-- Show custom linter configurations
 	vim.api.nvim_create_user_command("LspShowCustomLinters", function(opts)
 		local loader = require("lsp.loader")
