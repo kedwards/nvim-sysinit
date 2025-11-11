@@ -1,8 +1,9 @@
 -- Go Language Configuration
 -- https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#gopls
+-- mise use -g go
 
 return {
-	-- LSP servers for Go
+	-- LSP
 	lsp = {
 		gopls = {
 			settings = {
@@ -44,17 +45,17 @@ return {
 		},
 	},
 
-	-- Formatters for Go
+	-- Formatters
 	format = {
 		go = { "gofumpt", "goimports-reviser" },
 	},
 
-	-- Linters for Go
+	-- Linters
 	lint = {
 		go = { "golangci-lint" },
 	},
 
-	-- DAP configuration for Go debugging
+	-- DAP
 	dap = {
 		go = {
 			type = "go",

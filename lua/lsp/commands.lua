@@ -1,5 +1,74 @@
 local M = {}
 
+--- Display content in a floating window
+--- @param lines string[] Lines to display
+--- @param opts? {title: string, max_width: number, max_height: number}
+local function show_in_float(lines, opts)
+	opts = opts or {}
+	local title = opts.title or "Info"
+	local max_width = opts.max_width or math.floor(vim.o.columns * 0.7)
+	local max_height = opts.max_height or math.floor(vim.o.lines * 0.8)
+
+	-- Calculate optimal width based on content
+	local content_width = 0
+	for _, line in ipairs(lines) do
+		content_width = math.max(content_width, vim.fn.strdisplaywidth(line))
+	end
+
+	-- Add padding for border and some breathing room
+	local width = math.min(content_width + 4, max_width)
+	width = math.max(width, vim.fn.strdisplaywidth(title) + 6) -- Ensure title fits
+
+	-- Calculate height
+	local height = math.min(#lines, max_height)
+
+	-- Center the window
+	local row = math.floor((vim.o.lines - height) / 2)
+	local col = math.floor((vim.o.columns - width) / 2)
+
+	-- Create buffer
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+	vim.bo[buf].modifiable = false
+	vim.bo[buf].filetype = "lspinfo"
+
+	-- Create window
+	local win = vim.api.nvim_open_win(buf, true, {
+		relative = "editor",
+		width = width,
+		height = height,
+		row = row,
+		col = col,
+		style = "minimal",
+		border = "rounded",
+		title = " " .. title .. " ",
+		title_pos = "center",
+	})
+
+	-- Set keymaps for closing
+	local close_keys = { "q", "<Esc>" }
+	for _, key in ipairs(close_keys) do
+		vim.keymap.set("n", key, "<cmd>close<cr>", { buffer = buf, silent = true })
+	end
+
+	-- Enable syntax highlighting
+	vim.api.nvim_buf_call(buf, function()
+		vim.cmd([[
+			syntax match LspInfoTitle /^===.*===$/ 
+			syntax match LspInfoSection /^\[.*\]$/
+			syntax match LspInfoKey /^\s*\w\+:/
+			syntax match LspInfoBullet /^\s*-/
+		
+			hi def link LspInfoTitle Title
+			hi def link LspInfoSection Function
+			hi def link LspInfoKey Identifier
+			hi def link LspInfoBullet Special
+		]])
+	end)
+
+	return buf, win
+end
+
 function M.setup()
 	-- Diagnostic commands
 	vim.api.nvim_create_user_command("LspDiagnostics", function()
@@ -27,40 +96,43 @@ function M.setup()
 		local loader = require("lsp.loader")
 		local configs = loader.read_configs()
 
-		print("=== Loaded LSP Configurations ===")
+		-- local lines = { "=== Loaded LSP Configurations ===" }
+		local lines = {}
 		for name, config in pairs(configs) do
-			print(string.format("\n[%s]", name))
+			table.insert(lines, string.format("[%s]", name))
 
 			if config.lsp then
-				print("  LSP servers:")
+				table.insert(lines, "  LSP servers:")
 				for server, _ in pairs(config.lsp) do
-					print(string.format("    - %s", server))
+					table.insert(lines, string.format("    - %s", server))
 				end
 			end
 
 			if config.format then
-				print("  Formatters:")
+				table.insert(lines, "  Formatters:")
 				for ft, formatters in pairs(config.format) do
-					print(string.format("    %s: %s", ft, table.concat(formatters, ", ")))
+					table.insert(lines, string.format("    %s: %s", ft, table.concat(formatters, ", ")))
 				end
 			end
 
 			if config.lint then
-				print("  Linters:")
+				table.insert(lines, "  Linters:")
 				for ft, linters in pairs(config.lint) do
-					print(string.format("    %s: %s", ft, table.concat(linters, ", ")))
+					table.insert(lines, string.format("    %s: %s", ft, table.concat(linters, ", ")))
 				end
 			end
 
 			if config.lint_config then
-				print("  Custom linter configs:")
+				table.insert(lines, "  Custom linter configs:")
 				for linter_name, _ in pairs(config.lint_config) do
-					print(string.format("    - %s (custom config)", linter_name))
+					table.insert(lines, string.format("    - %s (custom config)", linter_name))
 				end
 			end
+			table.insert(lines, "")
 		end
 
-		print(string.format("\nTotal configurations loaded: %d", vim.tbl_count(configs)))
+		table.insert(lines, string.format("Total configurations loaded: %d", vim.tbl_count(configs)))
+		show_in_float(lines, { title = "LSP Configurations" })
 	end, {
 		desc = "Show all loaded LSP configurations",
 	})
@@ -70,21 +142,24 @@ function M.setup()
 		local loader = require("lsp.loader")
 		local tools = loader.get_tools()
 
-		print("=== Available Tools ===")
+		-- local lines = { "=== Available Tools ===" }
+		local lines = {}
 		for tool_type, tool_list in pairs(tools) do
 			if #tool_list > 0 then
-				print(string.format("\n%s (%d):", tool_type:upper(), #tool_list))
+				table.insert(lines, string.format("%s (%d):", tool_type:upper(), #tool_list))
 				for _, tool in ipairs(tool_list) do
-					print(string.format("  - %s", tool))
+					table.insert(lines, string.format("  - %s", tool))
 				end
+				table.insert(lines, "")
 			end
 		end
+		show_in_float(lines, { title = "Available Tools" })
 	end, {
 		desc = "Show all available tools by type",
 	})
 
-	-- Install missing tools
-	vim.api.nvim_create_user_command("LspInstallMissing", function(opts)
+	-- Install tools
+	vim.api.nvim_create_user_command("LspInstallTools", function(opts)
 		local loader = require("lsp.loader")
 		local tool_types = opts.fargs
 
@@ -121,7 +196,7 @@ function M.setup()
 			)
 		end
 	end, {
-		desc = "Install missing tools",
+		desc = "Install LSP tools",
 		nargs = "*",
 		complete = function()
 			return { "lsp", "format", "lint", "dap" }
@@ -146,46 +221,51 @@ function M.setup()
 
 		local loader = require("lsp.loader")
 
-		print(string.format("=== Configuration for %s ===", filetype))
+		-- local lines = { string.format("=== Configuration for %s ===", filetype), "" }
+		local lines = {}
 
 		-- Show LSP servers
 		local lsp_config = loader.get_config_data("lsp", filetype)
 		if not vim.tbl_isempty(lsp_config) then
-			print("LSP servers:")
-			for ft, servers in pairs(lsp_config) do
+			table.insert(lines, "LSP servers:")
+			for _, servers in pairs(lsp_config) do
 				if type(servers) == "table" then
 					for server, _ in pairs(servers) do
-						print(string.format("  - %s", server))
+						table.insert(lines, string.format("  - %s", server))
 					end
 				end
 			end
+			table.insert(lines, "")
 		end
 
 		-- Show formatters
 		local format_config = loader.get_config_data("format", filetype)
 		if not vim.tbl_isempty(format_config) then
-			print("Formatters:")
+			table.insert(lines, "Formatters:")
 			for ft, formatters in pairs(format_config) do
 				if type(formatters) == "table" then
-					print(string.format("  %s: %s", ft, table.concat(formatters, ", ")))
+					table.insert(lines, string.format("  %s: %s", ft, table.concat(formatters, ", ")))
 				end
 			end
+			table.insert(lines, "")
 		end
 
 		-- Show linters
 		local lint_config = loader.get_config_data("lint", filetype)
 		if not vim.tbl_isempty(lint_config) then
-			print("Linters:")
+			table.insert(lines, "Linters:")
 			for ft, linters in pairs(lint_config) do
 				if type(linters) == "table" then
-					print(string.format("  %s: %s", ft, table.concat(linters, ", ")))
+					table.insert(lines, string.format("  %s: %s", ft, table.concat(linters, ", ")))
 				end
 			end
 		end
 
 		if vim.tbl_isempty(lsp_config) and vim.tbl_isempty(format_config) and vim.tbl_isempty(lint_config) then
-			print("No configuration found for filetype: " .. filetype)
+			table.insert(lines, "No configuration found for filetype: " .. filetype)
 		end
+
+		show_in_float(lines, { title = "Filetype Config: " .. filetype })
 	end, {
 		desc = "Show configuration for specific filetype",
 		nargs = "?",
@@ -284,45 +364,49 @@ function M.setup()
 	})
 
 	-- Show custom linter configurations
-	vim.api.nvim_create_user_command("LspShowCustomLinters", function(opts)
+	vim.api.nvim_create_user_command("LspShowCustomLinters", function()
 		local loader = require("lsp.loader")
 		local custom_configs = loader.get_custom_linter_configs()
 
 		if vim.tbl_isempty(custom_configs) then
-			print("No custom linter configurations found.")
+			vim.notify("No custom linter configurations found.", vim.log.levels.INFO, { title = "LSP" })
 			return
 		end
 
-		print("=== Custom Linter Configurations ===")
+		-- local lines = { "=== Custom Linter Configurations ===" }
+		local lines = {}
 		for linter_name, config in pairs(custom_configs) do
-			print(string.format("\n[%s]", linter_name))
+			-- table.insert(lines, "")
+			table.insert(lines, string.format("[%s]", linter_name))
 
 			if config.cmd then
-				print(string.format("  Command: %s", config.cmd))
+				table.insert(lines, string.format("  Command: %s", config.cmd))
 			end
 
 			if config.args then
-				print(string.format("  Args: %s", table.concat(config.args, " ")))
+				table.insert(lines, string.format("  Args: %s", table.concat(config.args, " ")))
 			end
 
 			if config.stdin ~= nil then
-				print(string.format("  Uses stdin: %s", tostring(config.stdin)))
+				table.insert(lines, string.format("  Uses stdin: %s", tostring(config.stdin)))
 			end
 
 			if config.stream then
-				print(string.format("  Stream: %s", config.stream))
+				table.insert(lines, string.format("  Stream: %s", config.stream))
 			end
 
 			if config.ignore_exitcode ~= nil then
-				print(string.format("  Ignore exit code: %s", tostring(config.ignore_exitcode)))
+				table.insert(lines, string.format("  Ignore exit code: %s", tostring(config.ignore_exitcode)))
 			end
 
 			if config.parser then
-				print("  Has custom parser: yes")
+				table.insert(lines, "  Has custom parser: yes")
 			end
 		end
 
-		print(string.format("\nTotal custom linter configurations: %d", vim.tbl_count(custom_configs)))
+		table.insert(lines, "")
+		table.insert(lines, string.format("Total custom linter configurations: %d", vim.tbl_count(custom_configs)))
+		show_in_float(lines, { title = "Custom Linter Configurations" })
 	end, {
 		desc = "Show detailed custom linter configurations",
 	})
