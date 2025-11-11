@@ -1,8 +1,9 @@
 -- Lua Language Configuration
 -- https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#lua_ls
+-- mise use -g lua-language-server
 
 return {
-	-- LSP servers for Lua
+	-- LSP
 	lsp = {
 		lua_ls = {
 			name = "lua-language-server",
@@ -107,12 +108,12 @@ return {
 		},
 	},
 
-	-- Formatters for Lua
+	-- Formatters
 	format = {
 		lua = { "stylua" },
 	},
 
-	-- Linters for Lua
+	-- Linters
 	lint = {
 		lua = { "selene" },
 	},
@@ -136,7 +137,7 @@ return {
 		},
 	},
 
-	-- DAP (Debug Adapter Protocol)
+	-- DAP
 	debug = {
 		adapters = {
 			nlua = function(callback, config)

@@ -1,10 +1,12 @@
 -- TypeScript/JavaScript Language Configuration
 -- https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#ts_ls
+-- npm install -g typescript-language-server typescript vscode-langservers-extracted
 
 return {
-	-- LSP servers for TypeScript/JavaScript
+	-- LSP
 	lsp = {
 		ts_ls = {
+			name = "typescript-language-server",
 			settings = {
 				typescript = {
 					inlayHints = {
@@ -32,66 +34,61 @@ return {
 				},
 			},
 		},
-		-- Alternative: eslint as LSP (Note: eslint-lsp in Mason)
-		eslint = {
-			settings = {
-				codeAction = {
-					disableRuleComment = {
-						enable = true,
-						location = "separateLine",
-					},
-					showDocumentation = {
-						enable = true,
-					},
-				},
-				codeActionOnSave = {
-					enable = false,
-					mode = "all",
-				},
-				experimental = {
-					useFlatConfig = false,
-				},
-				format = true,
-				nodePath = "",
-				onIgnoredFiles = "off",
-				problems = {
-					shortenToSingleLine = false,
-				},
-				quiet = false,
-				rulesCustomizations = {},
-				run = "onType",
-				useESLintClass = false,
-				validate = "on",
-				workingDirectory = {
-					mode = "location",
-				},
-			},
-		},
+		-- Alternative
+		-- eslint = {
+		-- 	name = "eslint-lsp",
+		-- 	settings = {
+		-- 		codeAction = {
+		-- 			disableRuleComment = {
+		-- 				enable = true,
+		-- 				location = "separateLine",
+		-- 			},
+		-- 			showDocumentation = {
+		-- 				enable = true,
+		-- 			},
+		-- 		},
+		-- 		codeActionOnSave = {
+		-- 			enable = false,
+		-- 			mode = "all",
+		-- 		},
+		-- 		experimental = {
+		-- 			useFlatConfig = false,
+		-- 		},
+		-- 		format = true,
+		-- 		nodePath = "",
+		-- 		onIgnoredFiles = "off",
+		-- 		problems = {
+		-- 			shortenToSingleLine = false,
+		-- 		},
+		-- 		quiet = false,
+		-- 		rulesCustomizations = {},
+		-- 		run = "onType",
+		-- 		useESLintClass = false,
+		-- 		validate = "on",
+		-- 		workingDirectory = {
+		-- 			mode = "location",
+		-- 		},
+		-- 	},
+		-- },
 	},
 
-	-- Formatters for TypeScript/JavaScript
+	-- Formatters
 	format = {
-		typescript = { "prettier" },
-		javascript = { "prettier" },
-		typescriptreact = { "prettier" },
-		javascriptreact = { "prettier" },
-		json = { "prettier" },
-		jsonc = { "prettier" },
-		css = { "prettier" },
-		scss = { "prettier" },
-		html = { "prettier" },
-		markdown = { "prettier" },
+		typescript = { "biome" },
+		javascript = { "biome" },
+		typescriptreact = { "biome" },
+		javascriptreact = { "biome" },
 	},
 
-	-- Linters for TypeScript/JavaScript
+	-- Linters
 	lint = {
-		typescript = { "eslint" },
-		javascript = { "eslint" },
-		typescriptreact = { "eslint" },
-		javascriptreact = { "eslint" },
+		typescript = { "biome" },
+		javascript = { "biome" },
+		typescriptreact = { "biome" },
+		javascriptreact = { "biome" },
 	},
 
-	-- DAP configuration for Node.js/TypeScript debugging
+	-- DAP
 	dap = {
 		typescript = {
 			type = "node2",
@@ -115,4 +112,3 @@ return {
 		},
 	},
 }
-

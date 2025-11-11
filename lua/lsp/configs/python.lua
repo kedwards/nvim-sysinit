@@ -1,35 +1,39 @@
 -- Python Language Configuration
 -- https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#pyright
+-- pip install pyright || npm install -g pyright
 
 return {
-	-- LSP servers for Python
+	-- LSP
 	lsp = {
-		pyright = {
-			settings = {
-				python = {
-					analysis = {
-						typeCheckingMode = "basic",
-						autoSearchPaths = true,
-						diagnosticMode = "workspace",
-						useLibraryCodeForTypes = true,
-						autoImportCompletions = true,
-					},
-				},
-			},
+		ruff = {
+			settings = {},
 		},
+		-- pyright = {
+		-- 	settings = {
+		-- 		python = {
+		-- 			analysis = {
+		-- 				typeCheckingMode = "basic",
+		-- 				autoSearchPaths = true,
+		-- 				diagnosticMode = "workspace",
+		-- 				useLibraryCodeForTypes = true,
+		-- 				autoImportCompletions = true,
+		-- 			},
+		-- 		},
+		-- 	},
+		-- },
 	},
 
-	-- Formatters for Python
+	-- Formatters
 	format = {
 		python = { "ruff", "isort" },
 	},
 
-	-- Linters for Python
+	-- Linters
 	lint = {
 		python = { "ruff", "mypy" },
 	},
 
-	-- DAP configuration for Python debugging
+	-- DAP
 	dap = {
 		python = {
 			type = "python",
@@ -39,4 +43,3 @@ return {
 		},
 	},
 }
-

@@ -12,7 +12,7 @@ return {
 			ensure_installed = {
 				"bash",
 				"c",
-				"latex",
+				-- "latex",
 				"lua",
 				"vim",
 				"vimdoc",
