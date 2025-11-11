@@ -429,7 +429,7 @@ function M.ensure_installed(tool_types)
 
 		if not ok then
 			vim.notify(
-				"Mason registry failed to initialize within 5 seconds. Tools will not be auto-installed.",
+				"Mason registry failed to initialize within 5 seconds. Tools will not be auto-installed. Use LspInstallTools to install them manually.",
 				vim.log.levels.WARN,
 				{ title = "Mason" }
 			)
@@ -514,7 +514,7 @@ end
 function M.setup(opts)
 	opts = opts or {}
 
-	-- Setup Mason if loaded (lazy-loaded by plugin config)
+	-- Setup Mason
 	local mason_ok, mason = pcall(require, "mason")
 	if mason_ok then
 		mason.setup(vim.tbl_deep_extend("force", {
@@ -528,13 +528,13 @@ function M.setup(opts)
 				},
 			},
 		}, opts.mason or {}))
-	end
 
-	-- Install tools asynchronously (only if explicitly requested)
-	if opts.ensure_installed == true and mason_ok then
-		vim.defer_fn(function()
-			M.ensure_installed(opts.tool_types)
-		end, 1000)
+		-- Install tools asynchronously
+		if opts.ensure_installed ~= false then
+			vim.defer_fn(function()
+				M.ensure_installed(opts.tool_types)
+			end, 1000)
+		end
 	end
 
 	-- Setup LSP servers
